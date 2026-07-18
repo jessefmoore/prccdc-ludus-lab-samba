@@ -1,9 +1,20 @@
 ---
 # =============================================================================
 # ccdc2_rustdesk — install + configure the RustDesk client on Linux for support.
-# The install is authoritative; password/config steps are best-effort (tolerant)
-# so a quirk never fails the range deploy.
+# Best-effort: RustDesk is a support convenience, so download/install problems
+# are caught (block/rescue) and never fail the range deploy.
 # =============================================================================
+
+- name: Ensure the CA trust store is present (fixes github TLS verify on minimal templates)
+  ansible.builtin.apt:
+    name:
+      - ca-certificates
+    state: present
+    update_cache: true
+    cache_valid_time: 3600
+  environment:
+    DEBIAN_FRONTEND: noninteractive
+  failed_when: false
 
 - name: Check whether RustDesk is already installed
   ansible.builtin.command: dpkg-query -W -f='${Version}' rustdesk
@@ -11,51 +22,60 @@
   changed_when: false
   failed_when: false
 
-- name: Download the RustDesk .deb
-  ansible.builtin.get_url:
-    url: "{{ ccdc2_rustdesk_deb_url }}"
-    dest: "/tmp/rustdesk-{{ ccdc2_rustdesk_version }}.deb"
-    mode: "0644"
-  when: ccdc2_rustdesk_version not in ccdc2_rd_installed.stdout
-  register: ccdc2_rd_download
-  retries: 3
-  delay: 10
-  until: ccdc2_rd_download is succeeded
+- name: Install RustDesk (tolerant — never cascades the deploy)
+  block:
+    - name: Download the RustDesk .deb
+      ansible.builtin.get_url:
+        url: "{{ ccdc2_rustdesk_deb_url }}"
+        dest: "/tmp/rustdesk-{{ ccdc2_rustdesk_version }}.deb"
+        mode: "0644"
+        validate_certs: false          # lab: ride out incomplete CA stores on minimal templates
+      when: ccdc2_rustdesk_version not in ccdc2_rd_installed.stdout
+      register: ccdc2_rd_download
+      retries: 3
+      delay: 10
+      until: ccdc2_rd_download is succeeded
 
-- name: Install RustDesk (with dependencies)
-  ansible.builtin.apt:
-    deb: "/tmp/rustdesk-{{ ccdc2_rustdesk_version }}.deb"
-    state: present
-  environment:
-    DEBIAN_FRONTEND: noninteractive
-  when: ccdc2_rustdesk_version not in ccdc2_rd_installed.stdout
+    - name: Install RustDesk (with dependencies)
+      ansible.builtin.apt:
+        deb: "/tmp/rustdesk-{{ ccdc2_rustdesk_version }}.deb"
+        state: present
+      environment:
+        DEBIAN_FRONTEND: noninteractive
+      when: ccdc2_rustdesk_version not in ccdc2_rd_installed.stdout
 
-- name: Ensure the RustDesk config directory exists (service runs as root)
-  ansible.builtin.file:
-    path: /root/.config/rustdesk
-    state: directory
-    mode: "0700"
+    - name: Ensure the RustDesk config directory exists (service runs as root)
+      ansible.builtin.file:
+        path: /root/.config/rustdesk
+        state: directory
+        mode: "0700"
 
-- name: Configure RustDesk (direct-IP access + optional custom relay)
-  ansible.builtin.template:
-    src: RustDesk2.toml.j2
-    dest: /root/.config/rustdesk/RustDesk2.toml
-    mode: "0600"
-  notify: Restart rustdesk
+    - name: Configure RustDesk (direct-IP access + optional custom relay)
+      ansible.builtin.template:
+        src: RustDesk2.toml.j2
+        dest: /root/.config/rustdesk/RustDesk2.toml
+        mode: "0600"
+      notify: Restart rustdesk
 
-- name: Enable and start the RustDesk service
-  ansible.builtin.service:
-    name: rustdesk
-    state: started
-    enabled: true
-  failed_when: false
+    - name: Enable and start the RustDesk service
+      ansible.builtin.service:
+        name: rustdesk
+        state: started
+        enabled: true
+      failed_when: false
 
-- name: Apply pending RustDesk restart
-  ansible.builtin.meta: flush_handlers
+    - name: Apply pending RustDesk restart
+      ansible.builtin.meta: flush_handlers
 
-- name: Set the permanent unattended-access password (best-effort)
-  ansible.builtin.command: rustdesk --password "{{ ccdc2_rustdesk_unattended_password }}"
-  register: ccdc2_rd_pw
-  changed_when: ccdc2_rd_pw.rc == 0
-  failed_when: false
-  no_log: true
+    - name: Set the permanent unattended-access password (best-effort)
+      ansible.builtin.command: rustdesk --password "{{ ccdc2_rustdesk_unattended_password }}"
+      register: ccdc2_rd_pw
+      changed_when: ccdc2_rd_pw.rc == 0
+      failed_when: false
+      no_log: true
+  rescue:
+    - name: RustDesk install failed — continuing without it (support tool only)
+      ansible.builtin.debug:
+        msg: >-
+          RustDesk could not be installed on {{ inventory_hostname }} and was
+          skipped so it can't block the deploy. Re-run the role later to retry.
