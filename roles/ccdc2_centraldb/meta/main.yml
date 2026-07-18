@@ -1,0 +1,29 @@
+---
+galaxy_info:
+  role_name: ccdc2_centraldb
+  namespace: ccdc2
+  author: ccdc2
+  description: >-
+    Native MariaDB server (Debian 12, no Docker) acting as the CCDC2 range's
+    central database host. Installs mariadb-server, binds it to all
+    interfaces so remote app hosts can connect, sets the root password, and
+    idempotently provisions databases/users/grants for WordPress, SnipeIT and
+    MantisBT which run on other hosts.
+  license: MIT
+  min_ansible_version: "2.12"
+  platforms:
+    - name: Debian
+      versions:
+        - all
+    - name: Ubuntu
+      versions:
+        - all
+  galaxy_tags:
+    - mariadb
+    - mysql
+    - database
+    - wordpress
+    - snipeit
+    - mantisbt
+    - ccdc2
+dependencies: []

@@ -1,0 +1,53 @@
+---
+# =============================================================================
+# ccdc2_mail — docker-mailserver + Roundcube webmail, LDAP-bound to the Samba DC.
+# Docker + compose plugin already present (geerlingguy.docker runs first).
+# =============================================================================
+
+- name: Create the mail stack directories
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    mode: "0755"
+  loop:
+    - "{{ ccdc2_mail_stack_dir }}"
+    - "{{ ccdc2_mail_stack_dir }}/config"
+
+- name: Deploy the Roundcube TLS-verify override
+  ansible.builtin.copy:
+    src: roundcube-ssl.inc.php
+    dest: "{{ ccdc2_mail_stack_dir }}/roundcube-ssl.inc.php"
+    mode: "0644"
+
+- name: Template the mail docker-compose file
+  ansible.builtin.template:
+    src: docker-compose.yml.j2
+    dest: "{{ ccdc2_mail_stack_dir }}/docker-compose.yml"
+    mode: "0644"
+
+- name: Pull the mail images
+  ansible.builtin.command:
+    cmd: docker compose pull
+    chdir: "{{ ccdc2_mail_stack_dir }}"
+  register: ccdc2_mail_pull
+  changed_when: false
+  retries: 3
+  delay: 10
+  until: ccdc2_mail_pull.rc == 0
+
+- name: Start the mail stack
+  ansible.builtin.command:
+    cmd: docker compose up -d
+    chdir: "{{ ccdc2_mail_stack_dir }}"
+  register: ccdc2_mail_up
+  changed_when: "'Started' in ccdc2_mail_up.stderr or 'Created' in ccdc2_mail_up.stderr or 'Recreate' in ccdc2_mail_up.stderr"
+
+- name: Wait for the Roundcube webmail to answer
+  ansible.builtin.uri:
+    url: "http://localhost:{{ ccdc2_mail_webmail_port }}/"
+    status_code: [200, 302, 403]
+  register: ccdc2_mail_web
+  retries: 20
+  delay: 10
+  until: ccdc2_mail_web.status in [200, 302, 403]
+  failed_when: false

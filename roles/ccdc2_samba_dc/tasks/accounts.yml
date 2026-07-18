@@ -1,0 +1,78 @@
+---
+# =============================================================================
+# ccdc2_samba_dc — seed department groups, an LDAP bind account, a plain domain
+# user, and sample employee users (with mail attributes). All steps check for
+# existence first so the role is fully idempotent.
+# =============================================================================
+
+- name: List existing AD groups
+  ansible.builtin.command: samba-tool group list
+  register: ccdc2_dc_groups
+  changed_when: false
+
+- name: List existing AD users
+  ansible.builtin.command: samba-tool user list
+  register: ccdc2_dc_userlist
+  changed_when: false
+
+# --- Department groups --------------------------------------------------------
+- name: Create department groups
+  ansible.builtin.command: samba-tool group add "{{ item }}"
+  loop: "{{ ccdc2_samba_dc_departments }}"
+  when: item not in ccdc2_dc_groups.stdout_lines
+  changed_when: true
+
+# --- LDAP bind service account -----------------------------------------------
+- name: Create the LDAP bind service account
+  ansible.builtin.command: >-
+    samba-tool user create {{ ccdc2_samba_dc_bind_account }}
+    {{ ccdc2_samba_dc_service_password }}
+    --description="CCDC2 LDAP bind account"
+  when: ccdc2_samba_dc_bind_account not in ccdc2_dc_userlist.stdout_lines
+  changed_when: true
+  no_log: true
+
+- name: Ensure the bind account never expires
+  ansible.builtin.command: samba-tool user setexpiry {{ ccdc2_samba_dc_bind_account }} --noexpiry
+  changed_when: false
+
+# --- Plain domain user -------------------------------------------------------
+- name: Create the plain domain user
+  ansible.builtin.command: >-
+    samba-tool user create {{ ccdc2_samba_dc_domain_user }}
+    {{ ccdc2_samba_dc_user_password }}
+    --given-name="CCDC" --surname="User"
+    --mail-address={{ ccdc2_samba_dc_domain_user }}@{{ ccdc2_samba_dc_dns_domain }}
+  when: ccdc2_samba_dc_domain_user not in ccdc2_dc_userlist.stdout_lines
+  changed_when: true
+  no_log: true
+
+- name: Ensure the plain domain user never expires
+  ansible.builtin.command: samba-tool user setexpiry {{ ccdc2_samba_dc_domain_user }} --noexpiry
+  changed_when: false
+
+# --- Employee users ----------------------------------------------------------
+- name: Create employee users (with mail attributes)
+  ansible.builtin.command: >-
+    samba-tool user create {{ item.username }}
+    {{ ccdc2_samba_dc_user_password }}
+    --given-name="{{ item.given }}" --surname="{{ item.surname }}"
+    --mail-address={{ item.username }}@{{ ccdc2_samba_dc_dns_domain }}
+  loop: "{{ ccdc2_samba_dc_users }}"
+  when: item.username not in ccdc2_dc_userlist.stdout_lines
+  changed_when: true
+  no_log: true
+
+- name: Ensure employee users never expire
+  ansible.builtin.command: samba-tool user setexpiry {{ item.username }} --noexpiry
+  loop: "{{ ccdc2_samba_dc_users }}"
+  changed_when: false
+
+- name: Add employee users to their department groups
+  ansible.builtin.command: samba-tool group addmembers "{{ item.dept }}" {{ item.username }}
+  loop: "{{ ccdc2_samba_dc_users }}"
+  register: ccdc2_dc_addmember
+  changed_when: "'Added' in (ccdc2_dc_addmember.stdout | default(''))"
+  failed_when:
+    - ccdc2_dc_addmember.rc != 0
+    - "'already' not in (ccdc2_dc_addmember.stderr | default('') | lower)"

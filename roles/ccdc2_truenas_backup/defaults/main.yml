@@ -1,0 +1,34 @@
+---
+# =============================================================================
+# ccdc2_truenas_backup — defaults (all namespaced ccdc2_truenas_backup_*)
+# TrueNAS SUBSTITUTE: a Debian box that acts as a backup target (SMB + NFS) and
+# snapshots what it receives into a local restic repository on a daily timer.
+# Replace with a real TrueNAS SCALE VM later (see scripts/build-templates.sh);
+# the stevefulme1.truenas Ansible role then configures the real appliance.
+# =============================================================================
+
+# Directory clients back up INTO (exported over SMB + NFS).
+ccdc2_truenas_backup_share_path: "/srv/backups"
+ccdc2_truenas_backup_smb_share_name: "backups"
+
+# Per-host subdirectories pre-created under the share.
+ccdc2_truenas_backup_hosts:
+  - desk01
+  - mail01
+  - web01
+  - db01
+  - snipe01
+  - tick01
+  - auth01
+  - siem01
+
+# Range CIDR allowed to reach the NFS/SMB share.
+ccdc2_truenas_backup_allowed_cidr: "10.51.0.0/16"
+
+# Local restic repository the timer snapshots the share into.
+ccdc2_truenas_backup_repo_path: "/srv/restic-repo"
+ccdc2_truenas_backup_repo_password: "CCDC2-Restic-2026!"
+ccdc2_truenas_backup_keep_daily: 7
+
+# NetBIOS workgroup for the standalone SMB server.
+ccdc2_truenas_backup_workgroup: "CCDC"

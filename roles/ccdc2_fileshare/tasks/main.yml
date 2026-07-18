@@ -1,0 +1,85 @@
+---
+# =============================================================================
+# ccdc2_fileshare — central Windows SMB file share with 5 department folders,
+# joined to the Samba AD domain. If the AD join fails, it falls back to granting
+# local Users so the share still works (per approved design).
+# =============================================================================
+
+# --- Point DNS at the Samba DC so ccdc.local resolves for the join -----------
+- name: Set the DNS client to the Samba AD DC
+  ansible.windows.win_dns_client:
+    adapter_names: "*"
+    dns_servers:
+      - "{{ ccdc2_fileshare_dc_ip }}"
+
+# --- Join the Samba AD domain (tolerant) -------------------------------------
+- name: Join the Samba AD domain
+  block:
+    - name: Join {{ ccdc2_fileshare_domain }}
+      microsoft.ad.membership:
+        dns_domain_name: "{{ ccdc2_fileshare_domain }}"
+        hostname: "{{ ccdc2_fileshare_hostname }}"
+        domain_admin_user: "{{ ccdc2_fileshare_netbios }}\\{{ ccdc2_fileshare_join_user }}"
+        domain_admin_password: "{{ ccdc2_fileshare_join_password }}"
+        state: domain
+        reboot: true
+      register: ccdc2_fs_join
+
+    - name: Record that the host is domain-joined
+      ansible.builtin.set_fact:
+        ccdc2_fileshare_joined: true
+  rescue:
+    - name: AD join failed — falling back to local access
+      ansible.builtin.set_fact:
+        ccdc2_fileshare_joined: false
+
+    - name: Warn that the share will use local permissions
+      ansible.builtin.debug:
+        msg: >-
+          Samba AD join failed; the Departments share will grant local Users
+          instead of AD department groups. Re-run after the DC is healthy to
+          switch to AD-group ACLs.
+
+# --- Create the share root and the department subfolders ----------------------
+- name: Ensure the share root exists
+  ansible.windows.win_file:
+    path: "{{ ccdc2_fileshare_root }}"
+    state: directory
+
+- name: Ensure each department subfolder exists
+  ansible.windows.win_file:
+    path: "{{ ccdc2_fileshare_root }}\\{{ item }}"
+    state: directory
+  loop: "{{ ccdc2_fileshare_departments }}"
+
+- name: Drop a placeholder readme in each department folder
+  ansible.windows.win_copy:
+    dest: "{{ ccdc2_fileshare_root }}\\{{ item }}\\README-{{ item }}.txt"
+    content: |
+      {{ item }} department share — CCDC2 (ccdc.local).
+      Files here are restricted to the {{ item }} team.
+  loop: "{{ ccdc2_fileshare_departments }}"
+
+# --- Publish the SMB share ----------------------------------------------------
+- name: Publish the Departments SMB share
+  ansible.windows.win_share:
+    name: "{{ ccdc2_fileshare_share_name }}"
+    description: "CCDC2 central departmental file share"
+    path: "{{ ccdc2_fileshare_root }}"
+    full: "Administrators"
+    change: "{{ (ccdc2_fileshare_netbios ~ '\\Domain Users') if ccdc2_fileshare_joined else 'Users' }}"
+    list: true
+
+# --- NTFS permissions per department -----------------------------------------
+# When domain-joined, grant each folder's AD department group Modify; otherwise
+# grant local Users so the share remains usable.
+- name: Grant each department group Modify on its folder
+  ansible.windows.win_acl:
+    path: "{{ ccdc2_fileshare_root }}\\{{ item }}"
+    user: "{{ (ccdc2_fileshare_netbios ~ '\\' ~ item) if ccdc2_fileshare_joined else 'BUILTIN\\Users' }}"
+    rights: Modify
+    type: allow
+    state: present
+    inherit: ContainerInherit, ObjectInherit
+    propagation: 'None'
+  loop: "{{ ccdc2_fileshare_departments }}"

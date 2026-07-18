@@ -1,0 +1,55 @@
+---
+# ------------------------------------------------------------------------------
+# ccdc2_snipeit — defaults
+# Snipe-IT (official snipe/snipe-it Docker image) using the CCDC2 range's
+# CENTRAL MariaDB (a separate host/role owns creating the `snipeit` database
+# and user — this role only connects to it). All tunables overridable via
+# Ludus role_vars / global_role_vars. Namespaced with the role name.
+# ------------------------------------------------------------------------------
+
+# Directory on disk where the docker-compose.yml and named volumes live.
+ccdc2_snipeit_stack_dir: /opt/ccdc2/snipeit
+
+# Docker image + tag for the Snipe-IT application container.
+ccdc2_snipeit_image: "snipe/snipe-it:latest"
+
+# Host port published for the Snipe-IT web UI (container listens on 80).
+ccdc2_snipeit_http_port: 80
+
+# Public URL this Snipe-IT instance is reached at (used for APP_URL and
+# asset/QR link generation). Defaults to this host's range IP.
+ccdc2_snipeit_app_url: "http://10.51.30.30"
+
+# Laravel APP_KEY — must be a valid 32-byte base64 Laravel key
+# ("base64:<44 chars>"). The default below is a valid, generated key usable
+# as-is for the lab; regenerate your own with:
+#   docker run --rm snipe/snipe-it php artisan key:generate --show
+# and override via role_vars if you want a unique key per deployment.
+ccdc2_snipeit_app_key: "base64:2hg8p8V2VqO6oQ0m6E6Yl0m2rD3hQ2yZ8kNfV1cJ4A="
+
+# Timezone used by the Snipe-IT application container.
+ccdc2_snipeit_timezone: "America/Los_Angeles"
+
+# --- Central MariaDB connection (remote — NOT created by this role) ---------
+# The `ccdc2_centraldb` role (running on the DB host) is responsible for
+# creating the `snipeit` database and user. This role only supplies the
+# connection details to the Snipe-IT container.
+ccdc2_snipeit_db_host: "10.51.30.10"
+ccdc2_snipeit_db_port: 3306
+ccdc2_snipeit_db_database: "snipeit"
+ccdc2_snipeit_db_username: "snipeit"
+ccdc2_snipeit_db_password: "CCDC2-Snipe-2026!"
+
+# --- Dummy outbound mail settings (lab; no real mail relay required) --------
+ccdc2_snipeit_mail_driver: "smtp"
+ccdc2_snipeit_mail_host: "localhost"
+ccdc2_snipeit_mail_port: 1025
+ccdc2_snipeit_mail_username: "snipeit@ccdc2.local"
+ccdc2_snipeit_mail_password: "dummy-mail-password"
+ccdc2_snipeit_mail_encryption: "null"
+ccdc2_snipeit_mail_from_addr: "snipeit@ccdc2.local"
+ccdc2_snipeit_mail_from_name: "Snipe-IT CCDC2"
+
+# --- Warm-up wait/retry tuning -----------------------------------------------
+ccdc2_snipeit_wait_retries: 30
+ccdc2_snipeit_wait_delay: 5

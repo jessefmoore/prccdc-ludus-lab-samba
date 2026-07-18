@@ -1,0 +1,23 @@
+---
+galaxy_info:
+  role_name: ccdc2_fileshare
+  namespace: ccdc2
+  author: ccdc2
+  description: >-
+    Central Windows Server SMB file share with five department subfolders
+    (HR/Finance/IT/Sales/Engineering), joined to the Samba AD domain with
+    per-department AD-group NTFS permissions. Falls back to local access if the
+    domain join fails. Idempotent.
+  license: MIT
+  min_ansible_version: "2.12"
+  platforms:
+    - name: Windows
+      versions:
+        - all
+  galaxy_tags:
+    - windows
+    - smb
+    - fileshare
+    - activedirectory
+    - ccdc2
+dependencies: []

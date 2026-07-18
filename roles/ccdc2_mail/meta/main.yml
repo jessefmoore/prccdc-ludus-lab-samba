@@ -1,0 +1,26 @@
+---
+galaxy_info:
+  role_name: ccdc2_mail
+  namespace: ccdc2
+  author: ccdc2
+  description: >-
+    Deploy docker-mailserver (Postfix + Dovecot) and Roundcube webmail via docker
+    compose, provisioning mailboxes from and authenticating against the Samba AD
+    DC over LDAP. Users log in with their AD credentials. Idempotent.
+  license: MIT
+  min_ansible_version: "2.12"
+  platforms:
+    - name: Debian
+      versions:
+        - all
+    - name: Ubuntu
+      versions:
+        - all
+  galaxy_tags:
+    - mail
+    - postfix
+    - dovecot
+    - roundcube
+    - ldap
+    - ccdc2
+dependencies: []

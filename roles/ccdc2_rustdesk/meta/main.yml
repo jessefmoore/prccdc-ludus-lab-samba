@@ -1,0 +1,25 @@
+---
+galaxy_info:
+  role_name: ccdc2_rustdesk
+  namespace: ccdc2
+  author: ccdc2
+  description: >-
+    Install and configure the RustDesk remote-support client on Linux
+    (Debian/Ubuntu) hosts: enables the service, sets a permanent unattended
+    password, and turns on direct-IP access so support staff on the range /
+    WireGuard LAN can connect without a public relay. Idempotent.
+  license: MIT
+  min_ansible_version: "2.12"
+  platforms:
+    - name: Debian
+      versions:
+        - all
+    - name: Ubuntu
+      versions:
+        - all
+  galaxy_tags:
+    - rustdesk
+    - remote
+    - support
+    - ccdc2
+dependencies: []

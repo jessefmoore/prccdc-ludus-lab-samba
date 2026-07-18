@@ -1,0 +1,134 @@
+---
+# ==============================================================================
+# ccdc2_centraldb
+# Native MariaDB (Debian 12, NOT Docker) central database host for the CCDC2
+# range. Installs MariaDB, opens it up to the rest of the range, sets the root
+# password idempotently, and provisions the WordPress / SnipeIT / MantisBT
+# databases + application users. Safe to re-run.
+# ==============================================================================
+
+# --- Package installation ----------------------------------------------------
+- name: Install MariaDB server and client packages
+  ansible.builtin.apt:
+    name: "{{ ccdc2_centraldb_packages }}"
+    state: present
+    update_cache: true
+    cache_valid_time: 3600
+  environment:
+    DEBIAN_FRONTEND: noninteractive
+  register: ccdc2_centraldb_apt
+  retries: 3
+  delay: 10
+  until: ccdc2_centraldb_apt is succeeded
+
+# --- Listen on all interfaces -------------------------------------------------
+# Debian's stock /etc/mysql/mariadb.conf.d/50-server.cnf binds to 127.0.0.1.
+# Drop-ins in mariadb.conf.d/ are read in lexical order, so a 99- prefixed
+# file overrides it. WordPress/SnipeIT/MantisBT live on other range hosts and
+# need to reach this DB over the network.
+- name: Deploy drop-in to bind MariaDB to all interfaces
+  ansible.builtin.template:
+    src: 99-ccdc2.cnf.j2
+    dest: /etc/mysql/mariadb.conf.d/99-ccdc2.cnf
+    owner: root
+    group: root
+    mode: "0644"
+  notify: Restart mariadb
+
+# --- Service state -------------------------------------------------------------
+- name: Ensure MariaDB is enabled and started
+  ansible.builtin.service:
+    name: mariadb
+    state: started
+    enabled: true
+
+# Apply the bind-address change now (rather than at end-of-play) so remote
+# app hosts can connect as soon as this role finishes.
+- name: Apply pending MariaDB restart (bind-address change) immediately
+  ansible.builtin.meta: flush_handlers
+
+# --- Root password (idempotent) ----------------------------------------------
+# Debian's mariadb-server ships root@localhost using unix_socket auth (no
+# password, only usable by the local root user). On first run this lets us
+# in without a password over the socket; once we ALTER USER it to a password,
+# subsequent runs authenticate with -p and this check fails (rc != 0), so the
+# block below only ever runs once.
+- name: Check whether MariaDB root still uses passwordless unix_socket auth
+  ansible.builtin.command:
+    argv:
+      - mysql
+      - -u
+      - root
+      - -e
+      - "SELECT 1;"
+  register: ccdc2_centraldb_root_nopass
+  changed_when: false
+  failed_when: false
+  no_log: true
+
+# mysql_secure_installation-style hardening, run inline via the mysql CLI
+# (no community.mysql collection available): set the root password, drop the
+# anonymous user account, and drop the sample "test" database.
+- name: Set MariaDB root password and apply mysql_secure-style hardening
+  ansible.builtin.command:
+    argv:
+      - mysql
+      - -u
+      - root
+      - -e
+      - >-
+        ALTER USER 'root'@'localhost' IDENTIFIED BY '{{ ccdc2_centraldb_root_password }}';
+        DELETE FROM mysql.user WHERE User='';
+        DROP DATABASE IF EXISTS test;
+        FLUSH PRIVILEGES;
+  when: ccdc2_centraldb_root_nopass.rc == 0
+  changed_when: true
+  no_log: true
+
+# Build the auth args used by every mysql CLI call from here on. Passed as an
+# argv list (not a shell string) so passwords containing special characters
+# (e.g. '!') never need shell quoting.
+- name: Build root auth argument list for subsequent mysql CLI calls
+  ansible.builtin.set_fact:
+    ccdc2_centraldb_root_auth:
+      - -u
+      - root
+      - "-p{{ ccdc2_centraldb_root_password }}"
+  no_log: true
+
+- name: Verify root credentials are usable
+  ansible.builtin.command:
+    argv: "{{ ['mysql'] + ccdc2_centraldb_root_auth + ['-e', 'SELECT 1;'] }}"
+  changed_when: false
+  no_log: true
+
+# --- Application databases / users / grants -----------------------------------
+- name: Check whether each application database already exists
+  ansible.builtin.command:
+    argv: "{{ ['mysql'] + ccdc2_centraldb_root_auth + ['-N', '-B', '-e', ccdc2_centraldb_show_sql] }}"
+  vars:
+    ccdc2_centraldb_show_sql: "SHOW DATABASES LIKE '{{ item.name }}';"
+  loop: "{{ ccdc2_centraldb_databases }}"
+  loop_control:
+    label: "{{ item.name }}"
+  register: ccdc2_centraldb_db_check
+  changed_when: false
+  no_log: true
+
+- name: Create databases, application users, and grants
+  ansible.builtin.command:
+    argv: "{{ ['mysql'] + ccdc2_centraldb_root_auth + ['-e', ccdc2_centraldb_provision_sql] }}"
+  vars:
+    ccdc2_centraldb_provision_sql: >-
+      CREATE DATABASE IF NOT EXISTS `{{ item.name }}` CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+      CREATE USER IF NOT EXISTS '{{ item.user }}'@'{{ item.grant_host }}';
+      ALTER USER '{{ item.user }}'@'{{ item.grant_host }}' IDENTIFIED BY '{{ item.password }}';
+      GRANT ALL PRIVILEGES ON `{{ item.name }}`.* TO '{{ item.user }}'@'{{ item.grant_host }}';
+      FLUSH PRIVILEGES;
+  loop: "{{ ccdc2_centraldb_databases }}"
+  loop_control:
+    label: "{{ item.name }}"
+    index_var: ccdc2_centraldb_db_index
+  changed_when: >-
+    (ccdc2_centraldb_db_check.results[ccdc2_centraldb_db_index].stdout | default('')) | length == 0
+  no_log: true

@@ -1,0 +1,57 @@
+---
+# ------------------------------------------------------------------------------
+# ccdc2_mantis — defaults
+# Native (non-Docker) MantisBT install: Apache + mod_php + the upstream
+# mantisbt.org release tarball, backed by the range's central MariaDB host.
+# All tunables overridable via Ludus role_vars / global_role_vars.
+# ------------------------------------------------------------------------------
+
+# MantisBT release to install. Must correspond to a real directory under
+# https://sourceforge.net/projects/mantisbt/files/mantis-stable/
+ccdc2_mantis_version: "2.27.0"
+
+# Staging directory the release tarball is downloaded to before extraction.
+ccdc2_mantis_download_dir: /opt/ccdc2/mantis
+
+# SourceForge is used because it is the only location that reliably serves a
+# pre-built release tarball for MantisBT — the GitHub mirror only has git tags
+# (e.g. release-2.27.0), it does not publish Release assets/tarballs.
+ccdc2_mantis_download_url: "https://sourceforge.net/projects/mantisbt/files/mantis-stable/{{ ccdc2_mantis_version }}/mantisbt-{{ ccdc2_mantis_version }}.tar.gz/download"
+
+# Where the application is served from (Apache's default DocumentRoot is
+# /var/www/html on Debian, so this is reachable at http://<host>/mantis/).
+ccdc2_mantis_webroot: /var/www/html/mantis
+
+# apt packages required for a native Apache + mod_php MantisBT install plus
+# the MySQL/MariaDB CLI client used to check remote schema state.
+ccdc2_mantis_packages:
+  - apache2
+  - php
+  - libapache2-mod-php
+  - php-mysql
+  - php-mbstring
+  - php-curl
+  - php-gd
+  - php-xml
+  - mariadb-client
+  - unzip
+  - curl
+
+# --- Central MariaDB connection ---------------------------------------------
+# The database/user/password below MUST match what the ccdc2_centraldb role
+# provisions on the central DB host (see its defaults/main.yml
+# ccdc2_centraldb_databases entry for "mantisbt"). MantisBT connects directly
+# to this remote host; no local database is installed on this VM.
+ccdc2_mantis_db_host: "10.51.30.10"
+ccdc2_mantis_db_name: "mantisbt"
+ccdc2_mantis_db_user: "mantis"
+ccdc2_mantis_db_password: "CCDC2-Mantis-2026!"
+
+# MantisBT's cryptographic master salt (secures sessions/cookies/CSRF
+# tokens). MantisBT normally auto-generates this at random during install;
+# it is pinned here to a fixed default instead so the role stays idempotent
+# and reproducible across re-runs. Override per-range for a unique value.
+ccdc2_mantis_crypto_master_salt: "x4+LqPRvXWxHkLfYHIzAqOfVEoagKIWrX0IF1px6T24="
+
+# Default timezone written to config_inc.php.
+ccdc2_mantis_timezone: "America/Los_Angeles"

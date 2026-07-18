@@ -1,0 +1,27 @@
+---
+galaxy_info:
+  role_name: ccdc2_samba_dc
+  namespace: ccdc2
+  author: ccdc2
+  description: >-
+    Provision a Samba Active Directory Domain Controller (ccdc.local) on
+    Debian/Ubuntu with the internal DNS backend, then seed department groups,
+    an LDAP bind service account, and sample employee users (with mail
+    attributes) for the CCDC2 range. Idempotent and safe to re-run.
+  license: MIT
+  min_ansible_version: "2.12"
+  platforms:
+    - name: Debian
+      versions:
+        - all
+    - name: Ubuntu
+      versions:
+        - all
+  galaxy_tags:
+    - samba
+    - activedirectory
+    - domaincontroller
+    - ldap
+    - dns
+    - ccdc2
+dependencies: []

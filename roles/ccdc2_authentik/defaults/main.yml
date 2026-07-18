@@ -1,0 +1,44 @@
+---
+# =============================================================================
+# ccdc2_authentik — defaults (all namespaced ccdc2_authentik_*)
+# =============================================================================
+
+ccdc2_authentik_stack_dir: "/opt/ccdc2/authentik"
+
+# Container images. authentik pins are recommended; :latest is used for lab
+# resilience (avoids a tag-not-found breaking the deploy).
+ccdc2_authentik_image: "ghcr.io/goauthentik/server:latest"
+ccdc2_authentik_postgres_image: "docker.io/library/postgres:16-alpine"
+ccdc2_authentik_redis_image: "docker.io/library/redis:alpine"
+
+# Secrets (override in production). SECRET_KEY signs sessions; PG_PASS is the
+# internal Postgres password.
+ccdc2_authentik_secret_key: "CCDC2-authentik-secret-key-change-me-0123456789abcdef"
+ccdc2_authentik_pg_password: "CCDC2-Authentik-PG-2026!"
+
+# Bootstrap admin (user 'akadmin'). Its password/token are created on first boot
+# and are ALSO used as the LDAP outpost search-bind identity by ccdc2_authentik_ssh.
+ccdc2_authentik_bootstrap_password: "CCDC2-Authentik-2026!"
+ccdc2_authentik_bootstrap_token: "CCDC2-Authentik-Token-2026-abcdef0123456789"
+ccdc2_authentik_bootstrap_email: "akadmin@ccdc.local"
+
+# Web ports (HTTP/HTTPS) and the embedded LDAP outpost ports published on this
+# host so the SnipeIT box can authenticate SSH against them.
+ccdc2_authentik_http_port: 9000
+ccdc2_authentik_https_port: 9443
+ccdc2_authentik_ldap_port: 389
+ccdc2_authentik_ldaps_port: 636
+
+# The base DN the embedded LDAP outpost serves under (authentik default).
+ccdc2_authentik_ldap_base_dn: "dc=ldap,dc=goauthentik,dc=io"
+
+# Ship a starter blueprint that creates an LDAP provider + application (applied
+# best-effort by authentik on boot; see README for the finalize/verify steps).
+ccdc2_authentik_apply_blueprint: true
+
+# Optional: federate the Samba AD DC as an LDAP source so AD users appear in
+# authentik. Host + bind account (svc_ldap) come from the DC role.
+ccdc2_authentik_ad_host: "10.51.10.10"
+ccdc2_authentik_ad_base_dn: "dc=ccdc,dc=local"
+ccdc2_authentik_ad_bind_dn: "CCDC\\svc_ldap"
+ccdc2_authentik_ad_bind_password: "CCDC2-Svc-2026!"

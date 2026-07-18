@@ -1,0 +1,11 @@
+# {{ ansible_managed }}
+[options]
+{% if ccdc2_rustdesk_relay_host | length > 0 %}
+custom-rendezvous-server = '{{ ccdc2_rustdesk_relay_host }}'
+relay-server = '{{ ccdc2_rustdesk_relay_host }}'
+{% if ccdc2_rustdesk_relay_key | length > 0 %}
+key = '{{ ccdc2_rustdesk_relay_key }}'
+{% endif %}
+{% endif %}
+direct-server = 'Y'
+verification-method = 'use-permanent-password'

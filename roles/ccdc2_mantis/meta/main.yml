@@ -1,0 +1,28 @@
+---
+galaxy_info:
+  role_name: ccdc2_mantis
+  namespace: ccdc2
+  author: ccdc2
+  description: >-
+    Native install (Apache + PHP + upstream mantisbt.org tarball, no Docker)
+    of MantisBT, an IT-support / bug ticketing system, for the CCDC2 range.
+    Uses the range's central MariaDB host rather than a local database, and
+    idempotently drives MantisBT's admin/install.php schema installer so the
+    application is immediately usable after the role runs.
+  license: MIT
+  min_ansible_version: "2.12"
+  platforms:
+    - name: Debian
+      versions:
+        - all
+    - name: Ubuntu
+      versions:
+        - all
+  galaxy_tags:
+    - mantisbt
+    - apache
+    - php
+    - ticketing
+    - helpdesk
+    - ccdc2
+dependencies: []

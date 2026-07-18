@@ -1,0 +1,31 @@
+---
+galaxy_info:
+  role_name: ccdc2_wordpress
+  namespace: ccdc2
+  author: ccdc2
+  description: >-
+    WordPress on Ubuntu 24.04 via Docker (single `wordpress:*-apache` container,
+    no local DB container) for the CCDC2 range. Connects to the range's
+    CENTRAL MariaDB host (provisioned by ccdc2_centraldb) for its database.
+    Templates a docker-compose.yml, brings the stack up idempotently with
+    `docker compose up -d`, waits for the central DB to be reachable, then
+    runs WP-CLI (bind-mounted wp-cli.phar) inside the container to install
+    WordPress core so the site is LIVE rather than showing the setup wizard.
+    Idempotent and safe to re-run.
+  license: MIT
+  min_ansible_version: "2.12"
+  platforms:
+    - name: Ubuntu
+      versions:
+        - all
+    - name: Debian
+      versions:
+        - all
+  galaxy_tags:
+    - docker
+    - wordpress
+    - php
+    - mariadb
+    - webserver
+    - ccdc2
+dependencies: []

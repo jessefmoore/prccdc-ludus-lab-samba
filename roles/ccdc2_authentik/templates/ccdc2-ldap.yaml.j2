@@ -1,0 +1,25 @@
+# {{ ansible_managed }}
+# Starter blueprint: an LDAP provider + application so the embedded outpost can
+# answer LDAP for SSH auth on the SnipeIT host. Applied best-effort on boot;
+# if the schema differs on your authentik version, authentik marks this
+# blueprint failed but stays healthy — finish it in the UI (see role README).
+version: 1
+metadata:
+  name: ccdc2-ldap-ssh
+entries:
+  - model: authentik_providers_ldap.ldapprovider
+    id: ccdc2-ldap-provider
+    identifiers:
+      name: CCDC2 LDAP Provider
+    attrs:
+      base_dn: "{{ ccdc2_authentik_ldap_base_dn }}"
+      bind_flow: !Find [authentik_flows.flow, [slug, default-authentication-flow]]
+      unbind_flow: !Find [authentik_flows.flow, [slug, default-invalidation-flow]]
+      bind_mode: cached
+      search_mode: cached
+  - model: authentik_core.application
+    identifiers:
+      slug: ccdc2-ldap
+    attrs:
+      name: "CCDC2 LDAP (SSH)"
+      provider: !KeyOf ccdc2-ldap-provider

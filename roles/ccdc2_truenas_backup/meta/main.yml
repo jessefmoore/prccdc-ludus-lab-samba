@@ -1,0 +1,27 @@
+---
+galaxy_info:
+  role_name: ccdc2_truenas_backup
+  namespace: ccdc2
+  author: ccdc2
+  description: >-
+    TrueNAS substitute — a Debian box that acts as a backup target (SMB + NFS)
+    for the range and snapshots what it receives into a local restic repository
+    on a daily systemd timer. Replace with a real TrueNAS SCALE VM later.
+    Idempotent.
+  license: MIT
+  min_ansible_version: "2.12"
+  platforms:
+    - name: Debian
+      versions:
+        - all
+    - name: Ubuntu
+      versions:
+        - all
+  galaxy_tags:
+    - backup
+    - nas
+    - samba
+    - nfs
+    - restic
+    - ccdc2
+dependencies: []

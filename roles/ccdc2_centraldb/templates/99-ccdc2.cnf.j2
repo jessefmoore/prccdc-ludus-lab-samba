@@ -1,0 +1,9 @@
+
+# {{ ansible_managed }}
+# ccdc2_centraldb drop-in: make MariaDB reachable from the rest of the range.
+# Debian's stock 50-server.cnf binds to 127.0.0.1; this override wins because
+# files in mariadb.conf.d/ are read in lexical order and later settings win.
+
+[mysqld]
+bind-address = {{ ccdc2_centraldb_bind_address }}
+port = {{ ccdc2_centraldb_port }}

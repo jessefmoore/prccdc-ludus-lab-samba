@@ -1,0 +1,49 @@
+---
+# {{ ansible_managed }}
+# ccdc2_snipeit — Snipe-IT connected to the CCDC2 central MariaDB.
+# Do not edit by hand; regenerate via the ccdc2_snipeit Ansible role.
+
+services:
+  snipeit:
+    image: "{{ ccdc2_snipeit_image }}"
+    container_name: ccdc2-snipeit
+    restart: unless-stopped
+    ports:
+      - "{{ ccdc2_snipeit_http_port }}:80"
+    environment:
+      APP_ENV: "production"
+      APP_DEBUG: "false"
+      APP_KEY: "{{ ccdc2_snipeit_app_key }}"
+      APP_URL: "{{ ccdc2_snipeit_app_url }}"
+      APP_TIMEZONE: "{{ ccdc2_snipeit_timezone }}"
+
+      # --- Legacy MYSQL_* style (older snipe-it entrypoint versions) ---
+      MYSQL_PORT_3306_TCP_ADDR: "{{ ccdc2_snipeit_db_host }}"
+      MYSQL_PORT_3306_TCP_PORT: "{{ ccdc2_snipeit_db_port }}"
+      MYSQL_DATABASE: "{{ ccdc2_snipeit_db_database }}"
+      MYSQL_USER: "{{ ccdc2_snipeit_db_username }}"
+      MYSQL_PASSWORD: "{{ ccdc2_snipeit_db_password }}"
+
+      # --- Current DB_* style (Laravel .env equivalents) ---
+      DB_CONNECTION: "mysql"
+      DB_HOST: "{{ ccdc2_snipeit_db_host }}"
+      DB_PORT: "{{ ccdc2_snipeit_db_port }}"
+      DB_DATABASE: "{{ ccdc2_snipeit_db_database }}"
+      DB_USERNAME: "{{ ccdc2_snipeit_db_username }}"
+      DB_PASSWORD: "{{ ccdc2_snipeit_db_password }}"
+
+      # --- Dummy mail settings (lab; no real mail relay required) ---
+      MAIL_DRIVER: "{{ ccdc2_snipeit_mail_driver }}"
+      MAIL_HOST: "{{ ccdc2_snipeit_mail_host }}"
+      MAIL_PORT: "{{ ccdc2_snipeit_mail_port }}"
+      MAIL_USERNAME: "{{ ccdc2_snipeit_mail_username }}"
+      MAIL_PASSWORD: "{{ ccdc2_snipeit_mail_password }}"
+      MAIL_ENCRYPTION: "{{ ccdc2_snipeit_mail_encryption }}"
+      MAIL_FROM_ADDR: "{{ ccdc2_snipeit_mail_from_addr }}"
+      MAIL_FROM_NAME: "{{ ccdc2_snipeit_mail_from_name }}"
+    volumes:
+      - snipeit_data:/var/lib/snipeit
+
+volumes:
+  snipeit_data:
+    name: ccdc2_snipeit_data

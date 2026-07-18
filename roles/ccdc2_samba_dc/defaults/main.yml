@@ -1,0 +1,51 @@
+---
+# =============================================================================
+# ccdc2_samba_dc — defaults (all namespaced with the role name)
+# Override any of these via Ludus role_vars.
+# =============================================================================
+
+# --- Identity of the domain ---------------------------------------------------
+ccdc2_samba_dc_dns_domain: "ccdc.local"          # DNS/AD domain (lower case)
+ccdc2_samba_dc_realm: "CCDC.LOCAL"               # Kerberos realm (UPPER case)
+ccdc2_samba_dc_netbios_domain: "CCDC"            # short/flat NetBIOS name
+ccdc2_samba_dc_hostname: "dc01"                  # short hostname of this DC
+
+# This DC's own IP (used for /etc/hosts + as the AD DNS listen/answer address).
+ccdc2_samba_dc_ip: "10.51.10.10"
+
+# Upstream resolver Samba's internal DNS forwards non-AD queries to (internet).
+ccdc2_samba_dc_dns_forwarder: "8.8.8.8"
+
+# --- Credentials --------------------------------------------------------------
+# Domain Administrator password set at provision time. Override in production.
+ccdc2_samba_dc_admin_password: "CCDC2-Admin-2026!"
+
+# Default password for the LDAP bind account and seeded employee users.
+ccdc2_samba_dc_service_password: "CCDC2-Svc-2026!"
+ccdc2_samba_dc_user_password: "CCDC2-User-2026!"
+
+# --- Password policy (relaxed for a lab so seeded creds don't expire) ---------
+ccdc2_samba_dc_relax_password_policy: true
+
+# --- LDAP bind (service) account consumed by web apps for AD auth -------------
+ccdc2_samba_dc_bind_account: "svc_ldap"
+
+# --- Department groups (also drive the Windows file-share folders) ------------
+ccdc2_samba_dc_departments:
+  - HR
+  - Finance
+  - IT
+  - Sales
+  - Engineering
+
+# --- Seeded users -------------------------------------------------------------
+# A plain domain user plus one employee per department. mail attributes are set
+# so the mail server / Authentik / web apps have addressable identities.
+ccdc2_samba_dc_domain_user: "ccdcuser"
+
+ccdc2_samba_dc_users:
+  - { username: "jsmith",  given: "John",   surname: "Smith",   dept: "IT" }
+  - { username: "agarcia", given: "Ana",    surname: "Garcia",  dept: "HR" }
+  - { username: "bwong",   given: "Brian",  surname: "Wong",    dept: "Finance" }
+  - { username: "csingh",  given: "Carol",  surname: "Singh",   dept: "Sales" }
+  - { username: "dpatel",  given: "Dev",    surname: "Patel",   dept: "Engineering" }

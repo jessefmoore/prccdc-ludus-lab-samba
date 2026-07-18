@@ -1,0 +1,28 @@
+---
+galaxy_info:
+  role_name: ccdc2_linux_domain_join
+  namespace: ccdc2
+  author: ccdc2
+  description: >-
+    Join a Debian/Ubuntu Linux host to the CCDC2 Active Directory domain
+    (ccdc.local, served by a Samba AD DC) using realmd, SSSD and adcli so AD
+    users can authenticate via SSH/console. Configures DNS to the DC, SSSD, PAM
+    home-dir creation, and sudo for AD groups. Idempotent and safe to re-run.
+    realmd/adcli join a Samba AD DC identically to a Windows DC.
+  license: MIT
+  min_ansible_version: "2.12"
+  platforms:
+    - name: Debian
+      versions:
+        - all
+    - name: Ubuntu
+      versions:
+        - all
+  galaxy_tags:
+    - activedirectory
+    - samba
+    - realmd
+    - sssd
+    - domain
+    - ccdc2
+dependencies: []

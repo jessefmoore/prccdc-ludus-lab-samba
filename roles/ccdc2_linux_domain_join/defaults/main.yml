@@ -1,0 +1,37 @@
+---
+# ------------------------------------------------------------------------------
+# ccdc2_linux_domain_join — defaults
+# All tunables overridable via Ludus role_vars / global_role_vars. These var
+# names are intentionally shared (not role-prefixed) so global_role_vars can
+# feed the whole CCDC2 domain-join fleet from one place.
+# ------------------------------------------------------------------------------
+
+# The AD DNS domain (lower case, as used by realm/SSSD).
+ccdc_domain: ccdc.local
+
+# The Kerberos realm — same domain but UPPER CASE (krb5 requires upper case).
+ccdc_domain_upper: CCDC.LOCAL
+
+# The short NetBIOS/flat domain name.
+ccdc_domain_netbios: CCDC
+
+# IP address of the Samba AD Domain Controller. This host is also the DNS server
+# the Linux box must use so the AD domain (and its SRV records) resolve.
+ccdc_dc_ip: "10.51.10.10"
+
+# Privileged AD account used to create the computer object during the join.
+ccdc_join_user: Administrator
+
+# Password for ccdc_join_user. Handled with no_log. Override via role_vars.
+ccdc_join_password: "CCDC2-Admin-2026!"
+
+# Optional OU (distinguished name) to place the new computer object in.
+# Empty = default Computers container.
+ccdc_computer_ou: ""
+
+# AD group whose members get full sudo on this host (Samba AD ships
+# "Domain Admins"). Case-insensitive; spaces allowed.
+ccdc_sudo_group: "domain admins"
+
+# Optional list of AD groups permitted to log in. Empty = all domain users.
+ccdc_allowed_login_groups: []

@@ -1,0 +1,72 @@
+---
+# ==============================================================================
+# ccdc2_snipeit
+# Deploy Snipe-IT (official snipe/snipe-it Docker image) pointed at the CCDC2
+# range's central MariaDB. Docker + the docker compose plugin are already
+# installed by geerlingguy.docker earlier in the play. Idempotent and safe to
+# re-run: templating only changes the file when content differs, and
+# `docker compose up -d` is a no-op when the stack is already up to date.
+# ==============================================================================
+
+- name: Ensure the Snipe-IT stack directory exists
+  ansible.builtin.file:
+    path: "{{ ccdc2_snipeit_stack_dir }}"
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+
+- name: Template the Snipe-IT docker-compose.yml
+  ansible.builtin.template:
+    src: docker-compose.yml.j2
+    dest: "{{ ccdc2_snipeit_stack_dir }}/docker-compose.yml"
+    owner: root
+    group: root
+    mode: "0644"
+  register: ccdc2_snipeit_compose_file
+
+- name: Pull the Snipe-IT image (retry for transient registry/network errors)
+  ansible.builtin.command:
+    cmd: docker compose pull
+    chdir: "{{ ccdc2_snipeit_stack_dir }}"
+  register: ccdc2_snipeit_pull
+  changed_when: false
+  retries: 3
+  delay: 10
+  until: ccdc2_snipeit_pull is succeeded
+
+- name: Start the Snipe-IT stack (docker compose up -d)
+  ansible.builtin.command:
+    cmd: docker compose up -d
+    chdir: "{{ ccdc2_snipeit_stack_dir }}"
+  register: ccdc2_snipeit_up
+  changed_when: >-
+    'Started' in ccdc2_snipeit_up.stderr
+    or 'Created' in ccdc2_snipeit_up.stderr
+    or 'Recreated' in ccdc2_snipeit_up.stderr
+
+# --- Warm-up wait/retry -------------------------------------------------------
+# On first boot the snipe/snipe-it entrypoint runs Laravel DB migrations
+# against the central MariaDB before the web server starts serving requests.
+# Poll locally until we get any HTTP response so later tasks/handlers (and the
+# operator) don't race a still-migrating container. failed_when is false so a
+# slow warm-up never fails the play; it just means the service wasn't ready in
+# time and should be checked manually.
+- name: Wait for Snipe-IT to warm up (poll local HTTP endpoint)
+  ansible.builtin.command:
+    cmd: curl -s -o /dev/null -w "%{http_code}" http://localhost:{{ ccdc2_snipeit_http_port }}/setup
+  register: ccdc2_snipeit_warmup
+  changed_when: false
+  failed_when: false
+  retries: "{{ ccdc2_snipeit_wait_retries }}"
+  delay: "{{ ccdc2_snipeit_wait_delay }}"
+  until: ccdc2_snipeit_warmup.stdout is match('^[0-9]{3}$')
+
+- name: Report Snipe-IT warm-up result
+  ansible.builtin.debug:
+    msg: >-
+      Snipe-IT HTTP warm-up check returned status
+      '{{ ccdc2_snipeit_warmup.stdout | default("no response") }}' after
+      {{ ccdc2_snipeit_warmup.attempts | default(1) }} attempt(s).
+      A 200/302/404 all indicate the web server is up; if this still shows
+      "no response", check `docker logs` in {{ ccdc2_snipeit_stack_dir }}.

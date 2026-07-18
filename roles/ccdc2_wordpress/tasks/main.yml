@@ -1,0 +1,132 @@
+---
+# ==============================================================================
+# ccdc2_wordpress
+# WordPress via Docker on ccdc2-web01, using the range's CENTRAL MariaDB
+# (no local DB container). Order: stack dir -> wp-cli.phar -> compose file ->
+# docker compose up -d -> wait for central DB -> wp-cli core install (so the
+# site is LIVE, not the setup wizard) -> HTTP smoke check. Idempotent.
+# ==============================================================================
+
+# --- Stack directory ----------------------------------------------------------
+- name: Ensure the WordPress stack directory exists
+  ansible.builtin.file:
+    path: "{{ ccdc2_wordpress_stack_dir }}"
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+
+# --- WP-CLI --------------------------------------------------------------------
+# Downloaded once to the host and bind-mounted read-only into the container
+# (see templates/docker-compose.yml.j2). get_url is itself idempotent (skips
+# the download if the destination already exists and checksum isn't forced),
+# but we still retry to ride out transient network blips.
+- name: Download wp-cli.phar for use inside the container
+  ansible.builtin.get_url:
+    url: "{{ ccdc2_wordpress_wpcli_url }}"
+    dest: "{{ ccdc2_wordpress_wpcli_path }}"
+    mode: "0755"
+    force: false
+  register: ccdc2_wp_cli_download
+  retries: 3
+  delay: 5
+  until: ccdc2_wp_cli_download is succeeded
+
+# --- Compose file ----------------------------------------------------------
+- name: Template the WordPress docker-compose.yml
+  ansible.builtin.template:
+    src: docker-compose.yml.j2
+    dest: "{{ ccdc2_wordpress_stack_dir }}/docker-compose.yml"
+    owner: root
+    group: root
+    mode: "0644"
+  register: ccdc2_wp_compose_file
+
+# --- Bring the stack up (idempotent) -----------------------------------------
+# `docker compose up -d` is safe to re-run; only report a change when compose
+# actually created/(re)started/recreated a container.
+- name: Start the WordPress stack (docker compose up -d)
+  ansible.builtin.command:
+    cmd: docker compose up -d
+    chdir: "{{ ccdc2_wordpress_stack_dir }}"
+  register: ccdc2_wp_compose_up
+  changed_when: >-
+    ('Started' in (ccdc2_wp_compose_up.stdout ~ ccdc2_wp_compose_up.stderr))
+    or ('Created' in (ccdc2_wp_compose_up.stdout ~ ccdc2_wp_compose_up.stderr))
+    or ('Recreate' in (ccdc2_wp_compose_up.stdout ~ ccdc2_wp_compose_up.stderr))
+
+# --- Wait for the central database and the container to be reachable --------
+- name: Wait for the central database host to accept TCP connections
+  ansible.builtin.wait_for:
+    host: "{{ ccdc2_wordpress_db_host }}"
+    port: "{{ ccdc2_wordpress_db_port }}"
+    timeout: 120
+
+- name: Wait for the WordPress container to accept HTTP connections
+  ansible.builtin.wait_for:
+    host: "127.0.0.1"
+    port: "{{ ccdc2_wordpress_http_port }}"
+    timeout: 90
+
+- name: Wait until WP-CLI is usable inside the container (PHP/Apache ready)
+  ansible.builtin.command:
+    cmd: docker compose exec -T wordpress wp cli info --allow-root --path=/var/www/html
+    chdir: "{{ ccdc2_wordpress_stack_dir }}"
+  register: ccdc2_wp_cli_ready
+  changed_when: false
+  failed_when: false
+  retries: "{{ ccdc2_wordpress_db_wait_retries }}"
+  delay: "{{ ccdc2_wordpress_db_wait_delay }}"
+  until: ccdc2_wp_cli_ready.rc == 0
+
+- name: Fail if WP-CLI never became usable inside the container
+  ansible.builtin.fail:
+    msg: >-
+      `wp cli info` never succeeded inside the wordpress container:
+      {{ ccdc2_wp_cli_ready.stderr | default('') }}
+  when: ccdc2_wp_cli_ready.rc != 0
+
+# --- Install WordPress core so the site is LIVE (skip the setup wizard) -----
+# The central DB connection is exercised (and any real connection error will
+# surface here, or on the `core install` task below) since is-installed reads
+# wp_options through wpdb using the WORDPRESS_DB_* settings.
+- name: Check whether WordPress core is already installed
+  ansible.builtin.command:
+    cmd: docker compose exec -T wordpress wp core is-installed --allow-root --path=/var/www/html
+    chdir: "{{ ccdc2_wordpress_stack_dir }}"
+  register: ccdc2_wp_core_installed
+  changed_when: false
+  failed_when: false
+  retries: "{{ ccdc2_wordpress_db_wait_retries }}"
+  delay: "{{ ccdc2_wordpress_db_wait_delay }}"
+  until: ccdc2_wp_core_installed.rc == 0 or 'Error establishing a database connection' not in (ccdc2_wp_core_installed.stderr ~ ccdc2_wp_core_installed.stdout)
+
+- name: Install WordPress core (site goes live, admin account created)
+  ansible.builtin.command:
+    cmd: >-
+      docker compose exec -T wordpress wp core install
+      --url="{{ ccdc2_wordpress_site_url }}"
+      --title="{{ ccdc2_wordpress_site_title }}"
+      --admin_user="{{ ccdc2_wordpress_admin_user }}"
+      --admin_password="{{ ccdc2_wordpress_admin_password }}"
+      --admin_email="{{ ccdc2_wordpress_admin_email }}"
+      --skip-email
+      --allow-root
+      --path=/var/www/html
+    chdir: "{{ ccdc2_wordpress_stack_dir }}"
+  when: ccdc2_wp_core_installed.rc != 0
+  changed_when: true
+  no_log: true
+
+# --- Smoke check --------------------------------------------------------------
+- name: Verify the WordPress site responds over HTTP
+  ansible.builtin.uri:
+    url: "{{ ccdc2_wordpress_site_url }}"
+    status_code: 200
+    return_content: false
+    follow_redirects: safe
+  register: ccdc2_wp_http_check
+  retries: 6
+  delay: 5
+  until: ccdc2_wp_http_check.status | default(0) == 200
+  changed_when: false

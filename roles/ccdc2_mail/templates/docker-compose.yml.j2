@@ -1,0 +1,74 @@
+# {{ ansible_managed }}
+# docker-mailserver (Postfix + Dovecot, LDAP auth against Samba AD) + Roundcube.
+---
+services:
+  mailserver:
+    image: {{ ccdc2_mail_dms_image }}
+    container_name: ccdc2_mailserver
+    hostname: {{ ccdc2_mail_hostname }}
+    restart: unless-stopped
+    ports:
+      - "25:25"
+      - "143:143"
+      - "465:465"
+      - "587:587"
+      - "993:993"
+    environment:
+      # --- lightweight lab profile ---
+      ENABLE_SPAMASSASSIN: "0"
+      ENABLE_CLAMAV: "0"
+      ENABLE_FAIL2BAN: "0"
+      ENABLE_POSTGREY: "0"
+      ONE_DIR: "1"
+      POSTFIX_INET_PROTOCOLS: "ipv4"
+      PERMIT_DOCKER: "connected-networks"
+      SSL_TYPE: "self-signed"
+      # --- provision accounts from Samba AD over LDAP ---
+      ACCOUNT_PROVISIONER: "LDAP"
+      LDAP_SERVER_HOST: "{{ ccdc2_mail_ldap_host }}"
+      LDAP_SEARCH_BASE: "{{ ccdc2_mail_ldap_search_base }}"
+      LDAP_BIND_DN: "{{ ccdc2_mail_ldap_bind_dn }}"
+      LDAP_BIND_PW: "{{ ccdc2_mail_ldap_bind_pw }}"
+      LDAP_QUERY_FILTER_USER: "(&(objectclass=user)(mail=%s))"
+      LDAP_QUERY_FILTER_GROUP: "(&(objectclass=group)(mail=%s))"
+      LDAP_QUERY_FILTER_ALIAS: "(&(objectclass=user)(otherMailbox=%s))"
+      LDAP_QUERY_FILTER_DOMAIN: "(|(mail=*@%s)(mailAlias=*@%s)(mailGroupMember=*@%s))"
+      # --- Dovecot binds as the user against AD for authentication ---
+      DOVECOT_AUTH_BIND: "yes"
+      DOVECOT_USER_FILTER: "(&(objectclass=user)(sAMAccountName=%n))"
+      DOVECOT_PASS_FILTER: "(&(objectclass=user)(sAMAccountName=%n))"
+      DOVECOT_USER_ATTRS: "=home=/var/mail/%Ln,=mail=maildir:/var/mail/%Ln"
+    volumes:
+      - maildata:/var/mail
+      - mailstate:/var/mail-state
+      - maillogs:/var/log/mail
+      - ./config:/tmp/docker-mailserver
+      - /etc/localtime:/etc/localtime:ro
+    cap_add:
+      - NET_ADMIN
+
+  roundcube:
+    image: {{ ccdc2_mail_roundcube_image }}
+    container_name: ccdc2_roundcube
+    restart: unless-stopped
+    depends_on:
+      - mailserver
+    ports:
+      - "{{ ccdc2_mail_webmail_port }}:80"
+    environment:
+      ROUNDCUBEMAIL_DEFAULT_HOST: "ssl://mailserver"
+      ROUNDCUBEMAIL_DEFAULT_PORT: "993"
+      ROUNDCUBEMAIL_SMTP_SERVER: "tls://mailserver"
+      ROUNDCUBEMAIL_SMTP_PORT: "587"
+      ROUNDCUBEMAIL_PLUGINS: "archive,zipdownload"
+      ROUNDCUBEMAIL_UPLOAD_MAX_FILESIZE: "25M"
+    volumes:
+      - roundcube-data:/var/www/html
+      # disable TLS peer verification for the self-signed DMS cert (lab)
+      - ./roundcube-ssl.inc.php:/var/www/html/config/ccdc-ssl.inc.php:ro
+
+volumes:
+  maildata:
+  mailstate:
+  maillogs:
+  roundcube-data:

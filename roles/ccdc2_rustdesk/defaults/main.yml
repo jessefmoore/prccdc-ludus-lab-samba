@@ -1,0 +1,18 @@
+---
+# =============================================================================
+# ccdc2_rustdesk — defaults (all namespaced ccdc2_rustdesk_*)
+# Installs the RustDesk client on Linux for remote support: enables the service,
+# sets a permanent unattended-access password, and turns on direct-IP access so
+# an admin on the range/WireGuard LAN can connect without any public relay.
+# =============================================================================
+
+ccdc2_rustdesk_version: "1.4.9"
+ccdc2_rustdesk_deb_url: >-
+  https://github.com/rustdesk/rustdesk/releases/download/{{ ccdc2_rustdesk_version }}/rustdesk-{{ ccdc2_rustdesk_version }}-x86_64.deb
+
+# Permanent password used for unattended remote-support connections.
+ccdc2_rustdesk_unattended_password: "CCDC2-RustDesk-2026!"
+
+# Optional self-hosted ID/relay server (hbbs/hbbr). Empty = direct-IP only.
+ccdc2_rustdesk_relay_host: ""
+ccdc2_rustdesk_relay_key: ""

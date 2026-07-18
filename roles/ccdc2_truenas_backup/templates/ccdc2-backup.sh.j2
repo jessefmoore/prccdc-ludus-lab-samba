@@ -1,0 +1,9 @@
+#!/usr/bin/env bash
+# {{ ansible_managed }}
+# Snapshot the backup share into the local restic repo, then prune.
+set -euo pipefail
+export RESTIC_REPOSITORY="{{ ccdc2_truenas_backup_repo_path }}"
+export RESTIC_PASSWORD_FILE="/etc/ccdc2-restic.pass"
+
+restic backup "{{ ccdc2_truenas_backup_share_path }}" --tag daily
+restic forget --keep-daily {{ ccdc2_truenas_backup_keep_daily }} --prune

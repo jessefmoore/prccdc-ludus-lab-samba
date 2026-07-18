@@ -1,0 +1,14 @@
+<?php
+# {{ ansible_managed }}
+# MantisBT configuration file for the CCDC2 range.
+# Connects to the CENTRAL MariaDB host (not a local database).
+
+$g_hostname            = '{{ ccdc2_mantis_db_host }}';
+$g_db_type             = 'mysqli';
+$g_database_name       = '{{ ccdc2_mantis_db_name }}';
+$g_db_username         = '{{ ccdc2_mantis_db_user }}';
+$g_db_password         = '{{ ccdc2_mantis_db_password }}';
+
+$g_default_timezone    = '{{ ccdc2_mantis_timezone }}';
+
+$g_crypto_master_salt  = '{{ ccdc2_mantis_crypto_master_salt }}';

@@ -1,0 +1,25 @@
+---
+galaxy_info:
+  role_name: ccdc2_authentik_ssh
+  namespace: ccdc2
+  author: ccdc2
+  description: >-
+    Configure SSSD/PAM/NSS on a host so SSH logins authenticate against the
+    authentik embedded LDAP outpost. Tolerant of the outpost not being finalized
+    (SSSD runs offline; local logins keep working). Applied on the SnipeIT host.
+  license: MIT
+  min_ansible_version: "2.12"
+  platforms:
+    - name: Ubuntu
+      versions:
+        - all
+    - name: Debian
+      versions:
+        - all
+  galaxy_tags:
+    - sssd
+    - ldap
+    - authentik
+    - ssh
+    - ccdc2
+dependencies: []

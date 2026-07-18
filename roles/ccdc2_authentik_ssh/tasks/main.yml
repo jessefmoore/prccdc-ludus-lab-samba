@@ -1,0 +1,71 @@
+---
+# =============================================================================
+# ccdc2_authentik_ssh — make SSH on this host authenticate against the authentik
+# LDAP outpost. Tolerant: if the outpost isn't finalized yet, SSSD simply runs
+# offline and local (Ludus) logins keep working, so the deploy never fails here.
+# =============================================================================
+
+- name: Install SSSD + LDAP client packages
+  ansible.builtin.apt:
+    name:
+      - sssd
+      - sssd-ldap
+      - libnss-sss
+      - libpam-sss
+      - ldap-utils
+      - oddjob
+      - oddjob-mkhomedir
+    state: present
+    update_cache: true
+    cache_valid_time: 3600
+  environment:
+    DEBIAN_FRONTEND: noninteractive
+  register: ccdc2_authssh_apt
+  retries: 3
+  delay: 10
+  until: ccdc2_authssh_apt is succeeded
+
+- name: Deploy the SSSD config pointing at the authentik LDAP outpost
+  ansible.builtin.template:
+    src: sssd-authentik.conf.j2
+    dest: /etc/sssd/sssd.conf
+    owner: root
+    group: root
+    mode: "0600"
+  notify: Restart sssd
+
+- name: Ensure sss is in nsswitch for passwd/group/shadow
+  ansible.builtin.lineinfile:
+    path: /etc/nsswitch.conf
+    regexp: '^{{ item }}:'
+    line: "{{ item }}:         files systemd sss"
+  loop:
+    - passwd
+    - group
+    - shadow
+
+- name: Enable pam_sss and home-dir creation on login
+  ansible.builtin.command: "pam-auth-update --enable {{ item }}"
+  environment:
+    DEBIAN_FRONTEND: noninteractive
+  loop:
+    - sss
+    - mkhomedir
+  changed_when: true
+
+- name: Ensure oddjobd is running (home-dir helper)
+  ansible.builtin.service:
+    name: oddjobd
+    state: started
+    enabled: true
+  failed_when: false
+
+- name: Apply pending SSSD restart
+  ansible.builtin.meta: flush_handlers
+
+- name: Ensure SSSD is enabled and running
+  ansible.builtin.service:
+    name: sssd
+    state: started
+    enabled: true
+  failed_when: false

@@ -1,0 +1,9 @@
+---
+- name: Restart smbd
+  ansible.builtin.service:
+    name: smbd
+    state: restarted
+
+- name: Reload nfs exports
+  ansible.builtin.command: exportfs -ra
+  changed_when: true

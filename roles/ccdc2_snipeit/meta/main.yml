@@ -1,0 +1,26 @@
+---
+galaxy_info:
+  role_name: ccdc2_snipeit
+  namespace: ccdc2
+  author: ccdc2
+  description: >-
+    Deploy Snipe-IT asset/inventory management (official snipe/snipe-it Docker
+    image) on Ubuntu 24.04, connected to the CCDC2 range's central MariaDB
+    (remote host, database snipeit) instead of a local database. Idempotent
+    docker compose deployment with a warm-up wait/retry check.
+  license: MIT
+  min_ansible_version: "2.12"
+  platforms:
+    - name: Ubuntu
+      versions:
+        - all
+    - name: Debian
+      versions:
+        - all
+  galaxy_tags:
+    - snipeit
+    - docker
+    - inventory
+    - assetmanagement
+    - ccdc2
+dependencies: []

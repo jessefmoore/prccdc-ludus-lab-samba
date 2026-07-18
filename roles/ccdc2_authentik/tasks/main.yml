@@ -1,0 +1,58 @@
+---
+# =============================================================================
+# ccdc2_authentik — deploy the authentik identity provider (docker compose).
+# Docker + the compose plugin are already installed (geerlingguy.docker first).
+# =============================================================================
+
+- name: Create the authentik stack directories
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    mode: "0755"
+  loop:
+    - "{{ ccdc2_authentik_stack_dir }}"
+    - "{{ ccdc2_authentik_stack_dir }}/media"
+    - "{{ ccdc2_authentik_stack_dir }}/certs"
+    - "{{ ccdc2_authentik_stack_dir }}/custom-templates"
+    - "{{ ccdc2_authentik_stack_dir }}/blueprints/ccdc2"
+
+- name: Template the authentik docker-compose file
+  ansible.builtin.template:
+    src: docker-compose.yml.j2
+    dest: "{{ ccdc2_authentik_stack_dir }}/docker-compose.yml"
+    mode: "0644"
+  register: ccdc2_authentik_compose
+
+- name: Install the starter LDAP blueprint
+  ansible.builtin.template:
+    src: ccdc2-ldap.yaml.j2
+    dest: "{{ ccdc2_authentik_stack_dir }}/blueprints/ccdc2/ccdc2-ldap.yaml"
+    mode: "0644"
+  when: ccdc2_authentik_apply_blueprint | bool
+
+- name: Pull the authentik images
+  ansible.builtin.command:
+    cmd: docker compose pull
+    chdir: "{{ ccdc2_authentik_stack_dir }}"
+  register: ccdc2_authentik_pull
+  changed_when: false
+  retries: 3
+  delay: 10
+  until: ccdc2_authentik_pull.rc == 0
+
+- name: Start the authentik stack
+  ansible.builtin.command:
+    cmd: docker compose up -d
+    chdir: "{{ ccdc2_authentik_stack_dir }}"
+  register: ccdc2_authentik_up
+  changed_when: "'Started' in ccdc2_authentik_up.stderr or 'Created' in ccdc2_authentik_up.stderr or 'Recreate' in ccdc2_authentik_up.stderr"
+
+- name: Wait for the authentik web UI to answer
+  ansible.builtin.uri:
+    url: "http://localhost:{{ ccdc2_authentik_http_port }}/-/health/live/"
+    status_code: [200, 204]
+  register: ccdc2_authentik_health
+  retries: 30
+  delay: 10
+  until: ccdc2_authentik_health.status in [200, 204]
+  failed_when: false

@@ -1,0 +1,6 @@
+---
+- name: Restart rustdesk
+  ansible.builtin.service:
+    name: rustdesk
+    state: restarted
+  failed_when: false

@@ -1,0 +1,41 @@
+---
+# ------------------------------------------------------------------------------
+# ccdc2_centraldb — defaults
+# Native MariaDB (Debian 12) central database host for the CCDC2 range.
+# All tunables overridable via Ludus role_vars / global_role_vars.
+# ------------------------------------------------------------------------------
+
+# Packages to install for the native MariaDB server + client.
+ccdc2_centraldb_packages:
+  - mariadb-server
+  - mariadb-client
+
+# Interface MariaDB should bind to. 0.0.0.0 = all interfaces, required so
+# WordPress/SnipeIT/MantisBT hosts elsewhere on the range can connect.
+ccdc2_centraldb_bind_address: "0.0.0.0"
+
+# TCP port MariaDB listens on.
+ccdc2_centraldb_port: 3306
+
+# MariaDB root password. The role sets this idempotently via the unix_socket
+# auth root account on first run. Handled with no_log where used.
+ccdc2_centraldb_root_password: "CCDC2-DBRoot-2026!"
+
+# Databases + application users provisioned on this server. Each entry:
+#   name        - database name
+#   user        - application username
+#   password    - application user password (no_log where used)
+#   grant_host  - host mask the user/grant applies to (e.g. '%' for any host)
+ccdc2_centraldb_databases:
+  - name: wordpress
+    user: wp_user
+    password: "CCDC2-WP-2026!"
+    grant_host: "%"
+  - name: snipeit
+    user: snipeit
+    password: "CCDC2-Snipe-2026!"
+    grant_host: "%"
+  - name: mantisbt
+    user: mantis
+    password: "CCDC2-Mantis-2026!"
+    grant_host: "%"

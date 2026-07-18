@@ -1,0 +1,26 @@
+---
+# =============================================================================
+# ccdc2_fileshare — defaults (all namespaced ccdc2_fileshare_*)
+# Windows Server central file share with per-department subfolders, joined to
+# the Samba AD domain (falls back to local access if the join fails).
+# =============================================================================
+
+# Filesystem root that backs the share, and the SMB share name.
+ccdc2_fileshare_root: 'C:\Shares\Departments'
+ccdc2_fileshare_share_name: "Departments"
+
+# Department subfolders (each ACL'd to the matching AD group when domain-joined).
+ccdc2_fileshare_departments:
+  - HR
+  - Finance
+  - IT
+  - Sales
+  - Engineering
+
+# --- Samba AD domain join -----------------------------------------------------
+ccdc2_fileshare_domain: "ccdc.local"
+ccdc2_fileshare_netbios: "CCDC"
+ccdc2_fileshare_dc_ip: "10.51.10.10"
+ccdc2_fileshare_hostname: "fs01"
+ccdc2_fileshare_join_user: "Administrator"
+ccdc2_fileshare_join_password: "CCDC2-Admin-2026!"

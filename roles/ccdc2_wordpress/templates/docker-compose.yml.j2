@@ -1,0 +1,33 @@
+---
+# {{ ansible_managed }}
+# CCDC2 WordPress stack — {{ ccdc2_wordpress_stack_dir }}/docker-compose.yml
+#
+# Single wordpress:*-apache container. There is NO local database container
+# here: WordPress connects to the range's CENTRAL MariaDB host at
+# {{ ccdc2_wordpress_db_host }} (provisioned by the ccdc2_centraldb role).
+#
+# wp-cli.phar is downloaded to this stack dir by the ccdc2_wordpress role and
+# bind-mounted read-only into the container as /usr/local/bin/wp so `docker
+# compose exec wordpress wp ...` works even though the upstream image does
+# not ship WP-CLI.
+
+services:
+  wordpress:
+    image: "{{ ccdc2_wordpress_image }}"
+    container_name: ccdc2-wordpress
+    restart: unless-stopped
+    ports:
+      - "{{ ccdc2_wordpress_http_port }}:80"
+    environment:
+      WORDPRESS_DB_HOST: "{{ ccdc2_wordpress_db_host }}:{{ ccdc2_wordpress_db_port }}"
+      WORDPRESS_DB_NAME: "{{ ccdc2_wordpress_db_name }}"
+      WORDPRESS_DB_USER: "{{ ccdc2_wordpress_db_user }}"
+      WORDPRESS_DB_PASSWORD: "{{ ccdc2_wordpress_db_password }}"
+      WORDPRESS_TABLE_PREFIX: "{{ ccdc2_wordpress_db_table_prefix }}"
+    volumes:
+      - wordpress_data:/var/www/html
+      - ./wp-cli.phar:/usr/local/bin/wp:ro
+
+volumes:
+  wordpress_data:
+    name: ccdc2_wordpress_data

@@ -1,0 +1,248 @@
+# yaml-language-server: $schema=https://docs.ludus.cloud/schemas/range-config.json
+# =============================================================================
+# CCDC-RANGE-2 — Collegiate Cyber Defense Competition Range (v2)
+# =============================================================================
+# Range ID:   CCDC2   (pinned rangeNumber 51 -> all IPs are 10.51.<vlan>.<octet>)
+# Domain:     ccdc.local  (NetBIOS CCDC)  — served by a Samba AD DC (Linux!)
+# DC / DNS:   ccdc2-dc01 @ 10.51.10.10
+#
+# NOTE: the DC is Samba (Linux), so NO vm uses Ludus's `domain:` block. All
+# domain provisioning + joins are done by the ccdc2_* roles. Every Linux host
+# points DNS at the DC (10.51.10.10) so ccdc.local resolves.
+#
+# Elastic SIEM is a TWO-PHASE deploy: phase 1 brings up the SIEM container on
+# siem01; phase 2 fetches its enrollment token and enrolls the agents (the
+# commented `badsectorlabs.ludus_elastic_agent` lines below). See docs/DEPLOY.md.
+# =============================================================================
+
+ludus:
+  # ===========================================================================
+  # VLAN 10 — CORPORATE
+  # ===========================================================================
+
+  # --- Samba Active Directory Domain Controller + DNS (Debian 12) ------------
+  - vm_name: "{{ range_id }}-dc01"
+    hostname: "{{ range_id }}-dc01"
+    template: debian-12-x64-server-template
+    vlan: 10
+    ip_last_octet: 10
+    ram_gb: 4
+    ram_min_gb: 2
+    cpus: 2
+    linux: true
+    roles:
+      - ccdc2_samba_dc
+      # - badsectorlabs.ludus_elastic_agent      # phase 2
+    role_vars:
+      ccdc2_samba_dc_ip: "10.51.10.10"
+
+  # --- Linux Desktop (Ubuntu 24.04 desktop) + RustDesk ----------------------
+  - vm_name: "{{ range_id }}-desk01"
+    hostname: "{{ range_id }}-desk01"
+    template: ubuntu-24.04-x64-desktop-template
+    vlan: 10
+    ip_last_octet: 20
+    ram_gb: 4
+    ram_min_gb: 2
+    cpus: 2
+    linux: true
+    primary_dns_server: "10.51.10.10"
+    roles:
+      - ccdc2_linux_domain_join
+      - ccdc2_rustdesk
+      # - badsectorlabs.ludus_elastic_agent      # phase 2
+
+  # --- Windows central file share (Server 2022), joins Samba AD -------------
+  - vm_name: "{{ range_id }}-fs01"
+    hostname: "{{ range_id }}-fs01"
+    template: win2022-server-x64-template
+    vlan: 10
+    ip_last_octet: 30
+    ram_gb: 6
+    ram_min_gb: 3
+    cpus: 2
+    windows:
+      sysprep: false
+    roles:
+      - ccdc2_fileshare
+
+  # --- Mail server (docker-mailserver + Roundcube), LDAP to the DC ----------
+  - vm_name: "{{ range_id }}-mail01"
+    hostname: "{{ range_id }}-mail01"
+    template: debian-12-x64-server-template
+    vlan: 10
+    ip_last_octet: 40
+    ram_gb: 4
+    ram_min_gb: 2
+    cpus: 2
+    linux: true
+    primary_dns_server: "10.51.10.10"
+    roles:
+      - ccdc2_linux_domain_join
+      - geerlingguy.docker
+      - ccdc2_mail
+      - ccdc2_rustdesk
+      # - badsectorlabs.ludus_elastic_agent      # phase 2
+
+  # ===========================================================================
+  # VLAN 20 — DMZ
+  # ===========================================================================
+
+  # --- WordPress (Ubuntu 24.04 + Docker) -> central DB ----------------------
+  - vm_name: "{{ range_id }}-web01"
+    hostname: "{{ range_id }}-web01"
+    template: ubuntu-24.04-x64-server-template
+    vlan: 20
+    ip_last_octet: 10
+    ram_gb: 4
+    ram_min_gb: 2
+    cpus: 2
+    linux: true
+    primary_dns_server: "10.51.10.10"
+    roles:
+      - ccdc2_linux_domain_join
+      - geerlingguy.docker
+      - ccdc2_wordpress
+      - ccdc2_rustdesk
+      # - badsectorlabs.ludus_elastic_agent      # phase 2
+
+  # ===========================================================================
+  # VLAN 30 — INTERNAL SERVICES
+  # ===========================================================================
+
+  # --- Central database (Debian 12, native MariaDB) -------------------------
+  - vm_name: "{{ range_id }}-db01"
+    hostname: "{{ range_id }}-db01"
+    template: debian-12-x64-server-template
+    vlan: 30
+    ip_last_octet: 10
+    ram_gb: 6
+    ram_min_gb: 3
+    cpus: 2
+    linux: true
+    primary_dns_server: "10.51.10.10"
+    roles:
+      - ccdc2_linux_domain_join
+      - ccdc2_centraldb
+      - ccdc2_rustdesk
+      # - badsectorlabs.ludus_elastic_agent      # phase 2
+
+  # --- Authentik IdP (Ubuntu 24.04 + Docker) --------------------------------
+  - vm_name: "{{ range_id }}-auth01"
+    hostname: "{{ range_id }}-auth01"
+    template: ubuntu-24.04-x64-server-template
+    vlan: 30
+    ip_last_octet: 20
+    ram_gb: 6
+    ram_min_gb: 3
+    cpus: 2
+    linux: true
+    primary_dns_server: "10.51.10.10"
+    roles:
+      - ccdc2_linux_domain_join
+      - geerlingguy.docker
+      - ccdc2_authentik
+      - ccdc2_rustdesk
+      # - badsectorlabs.ludus_elastic_agent      # phase 2
+
+  # --- SnipeIT (Ubuntu 24.04 + Docker) -> central DB; SSH via Authentik -----
+  - vm_name: "{{ range_id }}-snipe01"
+    hostname: "{{ range_id }}-snipe01"
+    template: ubuntu-24.04-x64-server-template
+    vlan: 30
+    ip_last_octet: 30
+    ram_gb: 4
+    ram_min_gb: 2
+    cpus: 2
+    linux: true
+    primary_dns_server: "10.51.10.10"
+    roles:
+      - geerlingguy.docker
+      - ccdc2_snipeit
+      - ccdc2_authentik_ssh
+      - ccdc2_rustdesk
+      # - badsectorlabs.ludus_elastic_agent      # phase 2
+
+  # --- MantisBT ticketing (Debian 12, native Apache/PHP) -> central DB ------
+  - vm_name: "{{ range_id }}-tick01"
+    hostname: "{{ range_id }}-tick01"
+    template: debian-12-x64-server-template
+    vlan: 30
+    ip_last_octet: 40
+    ram_gb: 4
+    ram_min_gb: 2
+    cpus: 2
+    linux: true
+    primary_dns_server: "10.51.10.10"
+    roles:
+      - ccdc2_linux_domain_join
+      - ccdc2_mantis
+      - ccdc2_rustdesk
+      # - badsectorlabs.ludus_elastic_agent      # phase 2
+
+  # ===========================================================================
+  # VLAN 40 — SECURITY / BACKUP
+  # ===========================================================================
+
+  # --- Elastic SIEM container (Ubuntu 24.04 + Docker) -----------------------
+  - vm_name: "{{ range_id }}-siem01"
+    hostname: "{{ range_id }}-siem01"
+    template: ubuntu-24.04-x64-server-template
+    vlan: 40
+    ip_last_octet: 10
+    ram_gb: 8
+    ram_min_gb: 4
+    cpus: 4
+    linux: true
+    primary_dns_server: "10.51.10.10"
+    roles:
+      - geerlingguy.docker
+      - badsectorlabs.ludus_elastic_container
+      - ccdc2_rustdesk
+
+  # --- TrueNAS-substitute backup target (Debian 12) -------------------------
+  - vm_name: "{{ range_id }}-nas01"
+    hostname: "{{ range_id }}-nas01"
+    template: debian-12-x64-server-template
+    vlan: 40
+    ip_last_octet: 20
+    ram_gb: 4
+    ram_min_gb: 2
+    cpus: 2
+    linux: true
+    primary_dns_server: "10.51.10.10"
+    roles:
+      - ccdc2_truenas_backup
+      - ccdc2_rustdesk
+      # - badsectorlabs.ludus_elastic_agent      # phase 2
+
+# =============================================================================
+# NETWORK — flat/ACCEPT during build so all service + AD dependencies resolve.
+# =============================================================================
+network:
+  inter_vlan_default: ACCEPT
+  external_default: ACCEPT
+  wireguard_vlan_default: ACCEPT
+
+# =============================================================================
+# GLOBAL ROLE VARS — shared values passed to every role on every VM.
+# (All role variables are namespaced, so unused ones are harmless.)
+# =============================================================================
+global_role_vars:
+  # --- Linux AD domain join (ccdc2_linux_domain_join) ---
+  ccdc_domain: ccdc.local
+  ccdc_domain_upper: CCDC.LOCAL
+  ccdc_domain_netbios: CCDC
+  ccdc_dc_ip: "10.51.10.10"
+  ccdc_join_user: Administrator
+  ccdc_join_password: "CCDC2-Admin-2026!"
+  ccdc_sudo_group: "domain admins"
+
+  # --- Elastic SIEM ---
+  # Fleet server = siem01. The enrollment token is filled in phase 2 after the
+  # container is up (see docs/DEPLOY.md); the agent role lines are commented
+  # until then so phase 1 can't fail on an empty token.
+  ludus_elastic_stack_version: "9.4.2"
+  ludus_elastic_agent_version: "9.4.2"
+  ludus_elastic_fleet_server: "10.51.40.10:8220"
+  ludus_elastic_enrollment_token: ""

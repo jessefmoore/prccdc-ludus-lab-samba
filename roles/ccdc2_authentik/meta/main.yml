@@ -1,0 +1,27 @@
+---
+galaxy_info:
+  role_name: ccdc2_authentik
+  namespace: ccdc2
+  author: ccdc2
+  description: >-
+    Deploy the authentik identity provider (server, worker, PostgreSQL, Redis)
+    via docker compose, publishing the embedded LDAP outpost so the SnipeIT host
+    can authenticate SSH against authentik. Ships a starter LDAP provider
+    blueprint. Idempotent.
+  license: MIT
+  min_ansible_version: "2.12"
+  platforms:
+    - name: Ubuntu
+      versions:
+        - all
+    - name: Debian
+      versions:
+        - all
+  galaxy_tags:
+    - authentik
+    - sso
+    - identity
+    - ldap
+    - docker
+    - ccdc2
+dependencies: []

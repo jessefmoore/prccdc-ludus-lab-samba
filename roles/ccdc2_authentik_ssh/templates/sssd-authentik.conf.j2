@@ -1,0 +1,25 @@
+{{ ansible_managed | comment }}
+# Managed by ccdc2_authentik_ssh — SSH auth against the authentik LDAP outpost.
+[sssd]
+config_file_version = 2
+services = nss, pam
+domains = authentik
+
+[domain/authentik]
+id_provider = ldap
+auth_provider = ldap
+ldap_uri = {{ ccdc2_authentik_ssh_ldap_uri }}
+ldap_search_base = {{ ccdc2_authentik_ssh_base_dn }}
+ldap_default_bind_dn = {{ ccdc2_authentik_ssh_bind_dn }}
+ldap_default_authtok = {{ ccdc2_authentik_ssh_bind_password }}
+ldap_schema = rfc2307
+ldap_user_object_class = user
+ldap_user_name = cn
+ldap_id_use_start_tls = false
+ldap_tls_reqcert = never
+# Lab only: allow password auth over a plaintext LDAP bind.
+ldap_auth_disable_tls_never_use_in_production = true
+cache_credentials = true
+enumerate = false
+override_homedir = /home/%u
+default_shell = /bin/bash

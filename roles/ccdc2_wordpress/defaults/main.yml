@@ -1,0 +1,49 @@
+---
+# ------------------------------------------------------------------------------
+# ccdc2_wordpress — defaults
+# All tunables are namespaced ccdc2_wordpress_* (Ludus passes role_vars to
+# every role on a VM, so unprefixed names can collide). Override via Ludus
+# role_vars / global_role_vars as needed.
+# ------------------------------------------------------------------------------
+
+# --- Docker / stack layout ---------------------------------------------------
+# Where the compose file, downloaded wp-cli.phar, etc. live on ccdc2-web01.
+ccdc2_wordpress_stack_dir: "/opt/ccdc2/wordpress"
+
+# WordPress container image (pinned to a major/PHP tag; "wordpress:latest" also
+# works if preferred).
+ccdc2_wordpress_image: "wordpress:6-php8.3-apache"
+
+# Host port to publish the container's port 80 on.
+ccdc2_wordpress_http_port: 80
+
+# --- Central database connection (range's shared MariaDB, NOT a local DB) ---
+# Provisioned by the ccdc2_centraldb role on the DB host. This role only
+# CONNECTS to it.
+ccdc2_wordpress_db_host: "10.51.30.10"
+ccdc2_wordpress_db_name: "wordpress"
+ccdc2_wordpress_db_user: "wp_user"
+ccdc2_wordpress_db_password: "CCDC2-WP-2026!"
+ccdc2_wordpress_db_table_prefix: "wp_"
+ccdc2_wordpress_db_port: 3306
+
+# How long (retries x delay seconds) to wait for the central DB to be
+# reachable/usable before giving up on the WP-CLI install step.
+ccdc2_wordpress_db_wait_retries: 24
+ccdc2_wordpress_db_wait_delay: 5
+
+# --- WordPress site / admin (used to run `wp core install` so the site is
+#     LIVE instead of showing the setup wizard) --------------------------------
+ccdc2_wordpress_site_url: "http://{{ ansible_host | default('10.51.20.10') }}"
+ccdc2_wordpress_site_title: "CCDC2 Corporate"
+ccdc2_wordpress_admin_user: "wpadmin"
+ccdc2_wordpress_admin_password: "CCDC2-WP-Admin-2026!"
+ccdc2_wordpress_admin_email: "wpadmin@ccdc.local"
+
+# --- WP-CLI ------------------------------------------------------------------
+# The official wordpress image does NOT ship wp-cli. We download the phar to
+# the stack dir on the host and bind-mount it into the container at
+# /usr/local/bin/wp (read-only), which is simpler and more reliable than
+# relying on curl/php being available for a container-side download.
+ccdc2_wordpress_wpcli_url: "https://raw.githubusercontent.com/wp-cli/builds/gh-pages/phar/wp-cli.phar"
+ccdc2_wordpress_wpcli_path: "{{ ccdc2_wordpress_stack_dir }}/wp-cli.phar"

@@ -1,0 +1,133 @@
+---
+# =============================================================================
+# ccdc2_truenas_backup — Debian SMB/NFS backup target + daily restic snapshots.
+# TrueNAS appliance substitute; idempotent.
+# =============================================================================
+
+- name: Install Samba, NFS server, restic and rsync
+  ansible.builtin.apt:
+    name:
+      - samba
+      - nfs-kernel-server
+      - restic
+      - rsync
+    state: present
+    update_cache: true
+    cache_valid_time: 3600
+  environment:
+    DEBIAN_FRONTEND: noninteractive
+  register: ccdc2_nas_apt
+  retries: 3
+  delay: 10
+  until: ccdc2_nas_apt is succeeded
+
+# --- Share directory + per-host subfolders -----------------------------------
+- name: Create the backup share root
+  ansible.builtin.file:
+    path: "{{ ccdc2_truenas_backup_share_path }}"
+    state: directory
+    owner: nobody
+    group: nogroup
+    mode: "0775"
+
+- name: Create per-host backup subfolders
+  ansible.builtin.file:
+    path: "{{ ccdc2_truenas_backup_share_path }}/{{ item }}"
+    state: directory
+    owner: nobody
+    group: nogroup
+    mode: "0775"
+  loop: "{{ ccdc2_truenas_backup_hosts }}"
+
+# --- SMB export --------------------------------------------------------------
+- name: Deploy the standalone Samba config
+  ansible.builtin.template:
+    src: smb.conf.j2
+    dest: /etc/samba/smb.conf
+    owner: root
+    group: root
+    mode: "0644"
+  notify: Restart smbd
+
+- name: Enable and start smbd
+  ansible.builtin.service:
+    name: smbd
+    state: started
+    enabled: true
+
+# --- NFS export --------------------------------------------------------------
+- name: Export the backup share over NFS to the range
+  ansible.builtin.lineinfile:
+    path: /etc/exports
+    regexp: "^{{ ccdc2_truenas_backup_share_path | regex_escape }}\\s"
+    line: "{{ ccdc2_truenas_backup_share_path }} {{ ccdc2_truenas_backup_allowed_cidr }}(rw,sync,no_subtree_check,all_squash)"
+    state: present
+  notify: Reload nfs exports
+
+- name: Ensure the NFS server is running
+  ansible.builtin.service:
+    name: nfs-kernel-server
+    state: started
+    enabled: true
+
+# --- restic repository + daily timer -----------------------------------------
+- name: Write the restic repository password file
+  ansible.builtin.copy:
+    dest: /etc/ccdc2-restic.pass
+    content: "{{ ccdc2_truenas_backup_repo_password }}\n"
+    owner: root
+    group: root
+    mode: "0600"
+
+- name: Check whether the restic repo is initialised
+  ansible.builtin.stat:
+    path: "{{ ccdc2_truenas_backup_repo_path }}/config"
+  register: ccdc2_nas_repo
+
+- name: Initialise the restic repository
+  ansible.builtin.command:
+    cmd: restic init
+  environment:
+    RESTIC_REPOSITORY: "{{ ccdc2_truenas_backup_repo_path }}"
+    RESTIC_PASSWORD_FILE: /etc/ccdc2-restic.pass
+  when: not ccdc2_nas_repo.stat.exists
+  changed_when: true
+
+- name: Install the backup script
+  ansible.builtin.template:
+    src: ccdc2-backup.sh.j2
+    dest: /usr/local/sbin/ccdc2-backup.sh
+    owner: root
+    group: root
+    mode: "0755"
+
+- name: Install the systemd backup service unit
+  ansible.builtin.copy:
+    dest: /etc/systemd/system/ccdc2-backup.service
+    mode: "0644"
+    content: |
+      [Unit]
+      Description=CCDC2 restic backup of the NAS share
+      [Service]
+      Type=oneshot
+      ExecStart=/usr/local/sbin/ccdc2-backup.sh
+
+- name: Install the systemd backup timer unit
+  ansible.builtin.copy:
+    dest: /etc/systemd/system/ccdc2-backup.timer
+    mode: "0644"
+    content: |
+      [Unit]
+      Description=Run the CCDC2 restic backup daily
+      [Timer]
+      OnCalendar=*-*-* 02:30:00
+      Persistent=true
+      [Install]
+      WantedBy=timers.target
+
+- name: Enable and start the backup timer
+  ansible.builtin.systemd:
+    name: ccdc2-backup.timer
+    state: started
+    enabled: true
+    daemon_reload: true

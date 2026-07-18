@@ -1,0 +1,14 @@
+---
+# =============================================================================
+# ccdc2_authentik_ssh — configure this host's SSH (SSSD/PAM/NSS) to authenticate
+# against the authentik embedded LDAP outpost. Applied on the SnipeIT host.
+# All values overridable via role_vars.
+# =============================================================================
+
+# authentik embedded LDAP outpost (published by ccdc2_authentik on auth01).
+ccdc2_authentik_ssh_ldap_uri: "ldap://10.51.30.20:389"
+ccdc2_authentik_ssh_base_dn: "dc=ldap,dc=goauthentik,dc=io"
+
+# Search-bind identity = the authentik bootstrap admin (akadmin).
+ccdc2_authentik_ssh_bind_dn: "cn=akadmin,ou=users,dc=ldap,dc=goauthentik,dc=io"
+ccdc2_authentik_ssh_bind_password: "CCDC2-Authentik-2026!"
