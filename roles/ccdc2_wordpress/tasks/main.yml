@@ -55,12 +55,29 @@
     or ('Created' in (ccdc2_wp_compose_up.stdout ~ ccdc2_wp_compose_up.stderr))
     or ('Recreate' in (ccdc2_wp_compose_up.stdout ~ ccdc2_wp_compose_up.stderr))
 
-# --- Wait for the central database and the container to be reachable --------
-- name: Wait for the central database host to accept TCP connections
+# --- Wait for the central database (TOLERANT) --------------------------------
+# Ludus deploys hosts in IP order, so web01 (VLAN20) can run before db01 (VLAN30)
+# has MariaDB up. Don't hard-fail on that: record whether the DB is reachable and
+# defer the DB-dependent steps (core install) to the next idempotent deploy pass.
+- name: Wait for the central database host to accept TCP connections (tolerant)
   ansible.builtin.wait_for:
     host: "{{ ccdc2_wordpress_db_host }}"
     port: "{{ ccdc2_wordpress_db_port }}"
-    timeout: 120
+    timeout: 60
+  register: ccdc2_wp_db_wait
+  failed_when: false
+
+- name: Record whether the central DB is reachable
+  ansible.builtin.set_fact:
+    ccdc2_wp_db_up: "{{ 'Timeout' not in (ccdc2_wp_db_wait.msg | default('')) }}"
+
+- name: Note when the DB is not up yet (WordPress install deferred)
+  ansible.builtin.debug:
+    msg: >-
+      Central DB {{ ccdc2_wordpress_db_host }}:{{ ccdc2_wordpress_db_port }} not
+      reachable yet (db01 deploys after web01). The WordPress container is up and
+      will connect once the DB is live; core install runs on the next deploy pass.
+  when: not ccdc2_wp_db_up
 
 - name: Wait for the WordPress container to accept HTTP connections
   ansible.builtin.wait_for:
@@ -97,6 +114,7 @@
   register: ccdc2_wp_core_installed
   changed_when: false
   failed_when: false
+  when: ccdc2_wp_db_up
   retries: "{{ ccdc2_wordpress_db_wait_retries }}"
   delay: "{{ ccdc2_wordpress_db_wait_delay }}"
   until: ccdc2_wp_core_installed.rc == 0 or 'Error establishing a database connection' not in (ccdc2_wp_core_installed.stderr ~ ccdc2_wp_core_installed.stdout)
@@ -114,11 +132,13 @@
       --allow-root
       --path=/var/www/html
     chdir: "{{ ccdc2_wordpress_stack_dir }}"
-  when: ccdc2_wp_core_installed.rc != 0
+  when:
+    - ccdc2_wp_db_up
+    - ccdc2_wp_core_installed.rc | default(1) != 0
   changed_when: true
   no_log: true
 
-# --- Smoke check --------------------------------------------------------------
+# --- Smoke check (only meaningful once the DB is up + core installed) ---------
 - name: Verify the WordPress site responds over HTTP
   ansible.builtin.uri:
     url: "{{ ccdc2_wordpress_site_url }}"
@@ -126,7 +146,9 @@
     return_content: false
     follow_redirects: safe
   register: ccdc2_wp_http_check
+  when: ccdc2_wp_db_up
   retries: 6
   delay: 5
   until: ccdc2_wp_http_check.status | default(0) == 200
+  failed_when: false
   changed_when: false
