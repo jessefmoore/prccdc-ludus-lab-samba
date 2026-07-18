@@ -78,7 +78,7 @@
 - name: Grant each department group Modify on its folder (icacls, retried)
   ansible.windows.win_shell: >-
     icacls "{{ ccdc2_fileshare_root }}\{{ item }}"
-    /grant "{{ (ccdc2_fileshare_netbios ~ '\' ~ item) if ccdc2_fileshare_joined else 'BUILTIN\Users' }}:(OI)(CI)M"
+    /grant "{{ (ccdc2_fileshare_netbios ~ '\\' ~ item) if ccdc2_fileshare_joined else 'BUILTIN\\Users' }}:(OI)(CI)M"
   loop: "{{ ccdc2_fileshare_departments }}"
   register: ccdc2_fs_acl
   until: ccdc2_fs_acl.rc == 0
