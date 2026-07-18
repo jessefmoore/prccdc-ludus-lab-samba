@@ -26,6 +26,7 @@
   ansible.builtin.apt:
     name:
       - samba
+      - samba-ad-provision   # AD schema .ldf files required by `samba-tool domain provision` (Debian 12)
       - smbclient
       - samba-dsdb-modules
       - samba-vfs-modules
@@ -48,11 +49,11 @@
   until: ccdc2_dc_apt is succeeded
 
 # --- Ensure the DC resolves its own FQDN via /etc/hosts ----------------------
-- name: Ensure /etc/hosts maps this host's FQDN and short name
+- name: Ensure /etc/hosts maps this host's real FQDN and short name
   ansible.builtin.lineinfile:
     path: /etc/hosts
     regexp: '^{{ ccdc2_samba_dc_ip | regex_escape }}\s'
-    line: "{{ ccdc2_samba_dc_ip }} {{ ccdc2_samba_dc_hostname }}.{{ ccdc2_samba_dc_dns_domain }} {{ ccdc2_samba_dc_hostname }}"
+    line: "{{ ccdc2_samba_dc_ip }} {{ ansible_hostname }}.{{ ccdc2_samba_dc_dns_domain }} {{ ansible_hostname }}"
     state: present
 
 # --- Detect prior provisioning ----------------------------------------------
