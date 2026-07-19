@@ -41,6 +41,9 @@ new range. This is a Ludus WG/allowed-IPs matter, not a range-build issue — th
 services are validated in-VM by the role health checks above. To browse live,
 access via the Proxmox console or update the WG peer to route `10.51.0.0/16`.
 
-## Guided finalizes (documented, not auto-forced)
-- **Authentik LDAP outpost → SSH-to-SnipeIT**: add the LDAP provider to the
-  embedded outpost in the Authentik UI — see `roles/ccdc2_authentik/README.md`.
+## Authentik SSH-to-SnipeIT — automated + verified
+`ccdc2_authentik` finalizes the LDAP provider + a **dedicated LDAP outpost**
+container (389/636) via the API; `ccdc2_authentik_ssh` verified it on snipe01:
+- LDAP bind to the outpost: **OK** (akadmin entry found)
+- `getent passwd akadmin` → `akadmin:*:2004:2004:akadmin:/home/akadmin:/bin/bash`
+So `ssh <authentik-user>@10.51.30.30` authenticates through Authentik.

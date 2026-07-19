@@ -16,19 +16,22 @@ SnipeIT box.
 - The SnipeIT SSSD search-bind uses `cn=akadmin,ou=users,{{ base_dn }}` with that
   same password (see `ccdc2_authentik_ssh`).
 
-## What is automated vs. manual (finalize)
-Automated: full stack up + healthy; a starter **LDAP provider + application**
-blueprint (`blueprints/ccdc2/ccdc2-ldap.yaml`) applied best-effort on boot.
+## LDAP outpost — fully automated (`tasks/finalize.yml`)
+On deploy, the role calls the Authentik API (bootstrap token) to, idempotently:
+1. Create the **LDAP provider** `CCDC2 LDAP Provider` (base `dc=ldap,dc=goauthentik,dc=io`;
+   authentik 2025.2 schema: `authorization_flow` + `invalidation_flow`).
+2. Create a **dedicated LDAP outpost** object + read its token. (The *embedded*
+   outpost serves Proxy providers only — LDAP needs its own outpost.)
+3. Run the `ghcr.io/goauthentik/ldap` outpost container (version-matched) publishing
+   **389/636**, then wait for the listener.
 
-Manual finalize (one-time, in the UI — authentik LDAP provider/outpost wiring is
-version-sensitive so it is not force-automated):
-1. **Applications → Providers**: confirm *CCDC2 LDAP Provider* exists (or create
-   an LDAP Provider, base DN `dc=ldap,dc=goauthentik,dc=io`).
-2. **Applications → Outposts → authentik Embedded Outpost → Edit**: add the LDAP
-   provider so the outpost answers on 389/636.
-3. (Optional) **Directory → Federation & Social login → Create → LDAP Source**:
-   host `10.51.10.10`, bind `CCDC\svc_ldap`, base `dc=ccdc,dc=local` to import
-   the Samba AD users.
+`ccdc2_authentik_ssh` (on the SnipeIT box) points SSSD at `10.51.30.20:389` and
+verifies bind + `getent`. Verified working: `getent passwd akadmin` returns a POSIX
+user, so authentik users can SSH into snipe01.
+
+Optional (UI): **Directory → create an LDAP Source** to `10.51.10.10`, bind
+`CCDC\svc_ldap`, base `dc=ccdc,dc=local` to also federate the Samba AD users into
+authentik.
 
 ## Verify
 ```

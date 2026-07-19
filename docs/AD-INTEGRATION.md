@@ -18,18 +18,25 @@ The identity backbone is a **Samba Active Directory DC** (`ccdc.local`,
 | Authentik (`auth01`) | (finalize) LDAP **source** federates AD users; its **outpost** re-serves LDAP for SSH |
 | SnipeIT SSH (`snipe01`) | `sssd` → Authentik LDAP outpost (`ccdc2_authentik_ssh`) — "Authentik governs SSH" |
 
-## Authentik SSH-to-SnipeIT — the chain
-`AD users → (Authentik LDAP source federates them) → Authentik embedded LDAP
-outpost (10.51.30.20:389) → snipe01 SSSD/PAM → SSH`.
+## Authentik SSH-to-SnipeIT — the chain (fully automated + verified)
+`Authentik users → Authentik LDAP provider → dedicated LDAP outpost container
+(10.51.30.20:389) → snipe01 SSSD/PAM → SSH`.
 
-Authentik is deployed and healthy automatically. The LDAP provider/outpost binding
-is a short, version-sensitive UI step (not force-automated to avoid a broken
-blueprint). Finalize:
-1. Authentik UI → Providers → confirm/create **LDAP Provider** (base `dc=ldap,dc=goauthentik,dc=io`).
-2. Outposts → **authentik Embedded Outpost** → add the LDAP provider.
-3. (optional) Directory → create an **LDAP Source** to `10.51.10.10` (bind `CCDC\svc_ldap`).
-Then `getent passwd <user>` on snipe01 resolves authentik users and SSH works.
-The SnipeIT box always keeps its local Ludus login regardless, so nothing is bricked.
+`ccdc2_authentik`'s `finalize.yml` does this automatically via the Authentik API
+(bootstrap token), idempotently:
+1. Creates the **LDAP provider** `CCDC2 LDAP Provider` (base `dc=ldap,dc=goauthentik,dc=io`;
+   authentik 2025.2 schema `authorization_flow` + `invalidation_flow`).
+2. Creates a **dedicated LDAP outpost** object + fetches its token. (The *embedded*
+   outpost only serves Proxy providers — LDAP needs its own outpost.)
+3. Runs the `ghcr.io/goauthentik/ldap` outpost container publishing **389/636**.
+
+`ccdc2_authentik_ssh` on snipe01 then points SSSD at the outpost and verifies.
+**Confirmed working:** bind OK + `getent passwd akadmin` →
+`akadmin:*:2004:2004:akadmin:/home/akadmin:/bin/bash`. So authentik users can
+`ssh <user>@10.51.30.30`. snipe01 also keeps its local Ludus login, so nothing is bricked.
+
+Optional: add an **LDAP Source** to the Samba DC (`10.51.10.10`, bind `CCDC\svc_ldap`)
+in the Authentik UI to federate the AD users into authentik as well.
 
 ## Verify AD itself
 ```
