@@ -56,3 +56,8 @@
   delay: 10
   until: ccdc2_authentik_health.status in [200, 204]
   failed_when: false
+
+# --- Finalize the LDAP outpost (create provider + assign to embedded outpost) -
+- name: Finalize the LDAP outpost for SnipeIT SSH
+  ansible.builtin.include_tasks: finalize.yml
+  when: ccdc2_authentik_finalize_ldap | bool

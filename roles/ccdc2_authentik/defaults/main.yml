@@ -36,6 +36,11 @@ ccdc2_authentik_ldap_base_dn: "dc=ldap,dc=goauthentik,dc=io"
 # best-effort by authentik on boot; see README for the finalize/verify steps).
 ccdc2_authentik_apply_blueprint: true
 
+# Finalize the LDAP outpost via the authentik API (create the LDAP provider +
+# application and assign the provider to the embedded outpost) so SnipeIT SSH
+# authenticates through authentik with no manual UI step.
+ccdc2_authentik_finalize_ldap: true
+
 # Optional: federate the Samba AD DC as an LDAP source so AD users appear in
 # authentik. Host + bind account (svc_ldap) come from the DC role.
 ccdc2_authentik_ad_host: "10.51.10.10"
