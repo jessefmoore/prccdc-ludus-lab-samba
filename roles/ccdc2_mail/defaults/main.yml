@@ -22,6 +22,11 @@ ccdc2_mail_webmail_port: 80
 # Users authenticate with their AD credentials; mailboxes are provisioned from
 # LDAP (each seeded AD user has mail = <user>@ccdc.local).
 ccdc2_mail_ldap_host: "10.51.10.10"
-ccdc2_mail_ldap_search_base: "dc=ccdc,dc=local"
+# Scope the search to the Users container. A subtree search from the domain
+# root (dc=ccdc,dc=local) makes Samba AD return continuation referrals for the
+# subordinate naming contexts, which Dovecot does not chase — it fails the
+# lookup with "ldap_search ... Operations error". All seeded users live in
+# CN=Users, so this base resolves them without hitting referrals.
+ccdc2_mail_ldap_search_base: "CN=Users,dc=ccdc,dc=local"
 ccdc2_mail_ldap_bind_dn: "CN=svc_ldap,CN=Users,dc=ccdc,dc=local"
 ccdc2_mail_ldap_bind_pw: "CCDC2-Svc-2026!"

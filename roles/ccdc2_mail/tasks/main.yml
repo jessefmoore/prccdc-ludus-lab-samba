@@ -35,12 +35,16 @@
   delay: 10
   until: ccdc2_mail_pull.rc == 0
 
-- name: Start the mail stack
+- name: Start the mail stack (force-recreate so DMS re-inits its LDAP config)
   ansible.builtin.command:
-    cmd: docker compose up -d
+    cmd: docker compose up -d --force-recreate
     chdir: "{{ ccdc2_mail_stack_dir }}"
   register: ccdc2_mail_up
   changed_when: "'Started' in ccdc2_mail_up.stderr or 'Created' in ccdc2_mail_up.stderr or 'Recreate' in ccdc2_mail_up.stderr"
+
+- name: Give docker-mailserver time to initialise
+  ansible.builtin.wait_for:
+    timeout: 45
 
 - name: Wait for the Roundcube webmail to answer
   ansible.builtin.uri:

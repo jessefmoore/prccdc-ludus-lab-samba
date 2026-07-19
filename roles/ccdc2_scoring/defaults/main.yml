@@ -19,6 +19,12 @@ ccdc2_scoring_sla_threshold: 5
 ccdc2_scoring_sla_penalty: 25
 ccdc2_scoring_start_paused: false    # false = auto-run scoring (set true for a real competition)
 
+# After Quotient is up, auto-activate the blue team and mark the competition as
+# started so a fresh rebuild comes up scoring immediately (no manual UI kick).
+# Set false for a real competition where an admin starts scoring by hand.
+ccdc2_scoring_autostart: true
+ccdc2_scoring_team_identifier: "1"   # per-team box identifier (Quotient substitutes into checks)
+
 # --- Infra passwords (docker .env) ---
 ccdc2_scoring_db_password: "CCDC2-Score-DB-2026!"
 ccdc2_scoring_redis_password: "CCDC2-Score-Redis-2026!"

@@ -22,10 +22,14 @@ services:
       ONE_DIR: "1"
       POSTFIX_INET_PROTOCOLS: "ipv4"
       PERMIT_DOCKER: "connected-networks"
-      SSL_TYPE: "self-signed"
+      # Plaintext lab profile: no TLS cert material, so run without SSL. This
+      # makes Dovecot allow plaintext AUTH on 143 and Postfix AUTH on 25/587,
+      # which is what the scoring engine's SMTP/IMAP checks connect with.
+      SSL_TYPE: ""
       # --- provision accounts from Samba AD over LDAP ---
       ACCOUNT_PROVISIONER: "LDAP"
-      LDAP_SERVER_HOST: "{{ ccdc2_mail_ldap_host }}"
+      # LDAP_SERVER_HOST must include a URI scheme (ldap://, ldaps://, ldapi://).
+      LDAP_SERVER_HOST: "ldap://{{ ccdc2_mail_ldap_host }}"
       LDAP_SEARCH_BASE: "{{ ccdc2_mail_ldap_search_base }}"
       LDAP_BIND_DN: "{{ ccdc2_mail_ldap_bind_dn }}"
       LDAP_BIND_PW: "{{ ccdc2_mail_ldap_bind_pw }}"
@@ -37,7 +41,9 @@ services:
       DOVECOT_AUTH_BIND: "yes"
       DOVECOT_USER_FILTER: "(&(objectclass=user)(sAMAccountName=%n))"
       DOVECOT_PASS_FILTER: "(&(objectclass=user)(sAMAccountName=%n))"
-      DOVECOT_USER_ATTRS: "=home=/var/mail/%Ln,=mail=maildir:/var/mail/%Ln"
+      # Fixed uid/gid for the virtual vmail user (DMS uses 5000:5000); without
+      # these Dovecot fails post-login with "User is missing UID".
+      DOVECOT_USER_ATTRS: "=uid=5000,=gid=5000,=home=/var/mail/%Ln,=mail=maildir:/var/mail/%Ln"
     volumes:
       - maildata:/var/mail
       - mailstate:/var/mail-state
@@ -56,9 +62,10 @@ services:
     ports:
       - "{{ ccdc2_mail_webmail_port }}:80"
     environment:
-      ROUNDCUBEMAIL_DEFAULT_HOST: "ssl://mailserver"
-      ROUNDCUBEMAIL_DEFAULT_PORT: "993"
-      ROUNDCUBEMAIL_SMTP_SERVER: "tls://mailserver"
+      # Plaintext to DMS over the internal docker network (no TLS material).
+      ROUNDCUBEMAIL_DEFAULT_HOST: "mailserver"
+      ROUNDCUBEMAIL_DEFAULT_PORT: "143"
+      ROUNDCUBEMAIL_SMTP_SERVER: "mailserver"
       ROUNDCUBEMAIL_SMTP_PORT: "587"
       ROUNDCUBEMAIL_PLUGINS: "archive,zipdownload"
       ROUNDCUBEMAIL_UPLOAD_MAX_FILESIZE: "25M"

@@ -103,3 +103,69 @@
   delay: 10
   until: ccdc2_score_web.status in [200, 302, 303, 401, 403]
   failed_when: false
+
+# --- Auto-activate the blue team + start the competition -----------------------
+# Quotient boots with the competition "not started" and every team inactive, so no
+# checks run until an admin kicks it. For a hands-off rebuild we log in as admin and
+# do that over the API. All idempotent: re-activating / re-starting is a no-op.
+- name: Auto-start the competition (activate team + start scoring)
+  when: ccdc2_scoring_autostart | bool
+  block:
+    - name: Log in to the Quotient admin API
+      ansible.builtin.uri:
+        url: "http://localhost:{{ ccdc2_scoring_http_port }}/api/login"
+        method: POST
+        body_format: json
+        body:
+          username: "{{ ccdc2_scoring_admin_user }}"
+          password: "{{ ccdc2_scoring_admin_password }}"
+        status_code: [200]
+      register: ccdc2_score_login
+      retries: 10
+      delay: 6
+      until: ccdc2_score_login.status == 200
+      no_log: true
+
+    - name: Look up the blue team's ID
+      ansible.builtin.uri:
+        url: "http://localhost:{{ ccdc2_scoring_http_port }}/api/teams"
+        method: GET
+        headers:
+          Cookie: "{{ ccdc2_score_login.cookies_string }}"
+        status_code: [200]
+      register: ccdc2_score_teams
+      retries: 10
+      delay: 6
+      until:
+        - ccdc2_score_teams.status == 200
+        - (ccdc2_score_teams.json | selectattr('Name', 'equalto', ccdc2_scoring_team_name) | list | length) > 0
+
+    - name: Activate the blue team (set identifier + Active)
+      ansible.builtin.uri:
+        url: "http://localhost:{{ ccdc2_scoring_http_port }}/api/admin/teams"
+        method: POST
+        headers:
+          Cookie: "{{ ccdc2_score_login.cookies_string }}"
+          Content-Type: application/json
+        # Build the body with to_json so the team id serialises as a JSON number
+        # (Quotient's UpdateTeams decodes id into a Go uint and rejects a quoted string).
+        body: >-
+          {{
+            {'teams': [{
+              'id': (ccdc2_score_teams.json | selectattr('Name', 'equalto', ccdc2_scoring_team_name) | first).ID,
+              'identifier': ccdc2_scoring_team_identifier,
+              'active': true
+            }]} | to_json
+          }}
+        status_code: [200]
+
+    - name: Mark the competition as started
+      ansible.builtin.uri:
+        url: "http://localhost:{{ ccdc2_scoring_http_port }}/api/competition/start"
+        method: POST
+        headers:
+          Cookie: "{{ ccdc2_score_login.cookies_string }}"
+        body_format: json
+        body:
+          started: true
+        status_code: [200]
