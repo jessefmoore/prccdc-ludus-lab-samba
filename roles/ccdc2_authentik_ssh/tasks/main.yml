@@ -77,7 +77,7 @@
     state: restarted
   failed_when: false
 
-- name: LDAP bind test against the authentik outpost
+- name: LDAP bind test against the authentik outpost (retry while it warms up)
   ansible.builtin.command: >-
     ldapsearch -x -H {{ ccdc2_authentik_ssh_ldap_uri }}
     -D "{{ ccdc2_authentik_ssh_bind_dn }}" -w "{{ ccdc2_authentik_ssh_bind_password }}"
@@ -86,6 +86,9 @@
   changed_when: false
   failed_when: false
   no_log: true
+  retries: 12
+  delay: 10
+  until: ccdc2_authssh_bind.rc == 0
 
 - name: Show LDAP bind test result
   ansible.builtin.debug:
@@ -93,11 +96,21 @@
       authentik LDAP outpost bind {{ 'OK' if ccdc2_authssh_bind.rc == 0 else 'FAILED (rc=' ~ ccdc2_authssh_bind.rc ~ ')' }};
       akadmin entry {{ 'found' if ('numEntries' in (ccdc2_authssh_bind.stdout | default('')) or 'dn:' in (ccdc2_authssh_bind.stdout | default(''))) else 'not returned' }}
 
+- name: Bounce SSSD now that the outpost is confirmed serving
+  ansible.builtin.service:
+    name: sssd
+    state: restarted
+  failed_when: false
+  when: ccdc2_authssh_bind.rc == 0
+
 - name: Resolve an authentik user via NSS (SSSD)
   ansible.builtin.command: getent passwd akadmin
   register: ccdc2_authssh_getent
   changed_when: false
   failed_when: false
+  retries: 6
+  delay: 10
+  until: ccdc2_authssh_getent.rc == 0
 
 - name: Show NSS resolution result
   ansible.builtin.debug:
