@@ -43,7 +43,7 @@
     dest: "{{ ccdc2_mantis_download_dir }}/mantisbt-{{ ccdc2_mantis_version }}.tar.gz"
     mode: "0644"
     timeout: 120
-    follow_redirects: all
+    validate_certs: false
   when: not ccdc2_mantis_core_stat.stat.exists
   register: ccdc2_mantis_download
   retries: 3
