@@ -16,7 +16,7 @@ ccdc2_mantis_download_dir: /opt/ccdc2/mantis
 # SourceForge is used because it is the only location that reliably serves a
 # pre-built release tarball for MantisBT — the GitHub mirror only has git tags
 # (e.g. release-2.27.0), it does not publish Release assets/tarballs.
-ccdc2_mantis_download_url: "https://github.com/mantisbt/mantisbt/releases/download/{{ ccdc2_mantis_version }}/mantisbt-{{ ccdc2_mantis_version }}.tar.gz"
+ccdc2_mantis_download_url: "https://downloads.sourceforge.net/project/mantisbt/mantis-stable/{{ ccdc2_mantis_version }}/mantisbt-{{ ccdc2_mantis_version }}.tar.gz"
 
 # Where the application is served from (Apache's default DocumentRoot is
 # /var/www/html on Debian, so this is reachable at http://<host>/mantis/).
