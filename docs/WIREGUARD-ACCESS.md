@@ -66,9 +66,22 @@ xdg-open http://10.51.50.10/            # open the Quotient scoreboard
 sudo wg-quick down ccdc2               # done
 ```
 
-> First packet over a fresh tunnel is sometimes dropped — if a probe fails, retry.
-> Test reachability with TCP, not ping (the range routers drop ICMP):
-> `timeout 5 bash -c 'echo > /dev/tcp/10.51.50.10/80' && echo up`
+> **This range drops the FIRST packet to each host** — so the first hit to any IP
+> (or right after a redeploy, while the router's conntrack resets) will fail, then
+> work on retry. `scripts/wg-connect.sh` warms the scoreboard for you; in a browser,
+> just refresh once or twice. Test with TCP, not ping (the routers drop ICMP):
+> `for i in $(seq 5); do curl -sf -o /dev/null http://10.51.50.10/ && { echo up; break; }; sleep 2; done`
+
+## Troubleshooting
+- **Nothing in `10.51` reachable + `wg show` shows bytes sent but ~none received:**
+  the range is mid-deploy (conntrack resetting) or the WG scope is stale. Wait for
+  `rangeState: SUCCESS`, ensure the range is assigned to you
+  (`ludus range assign --user JM --range CCDC2`), bounce the tunnel, and warm-retry.
+- **Client is itself inside a Ludus range** (e.g. a Kali at `10.2.x`): it still
+  works, but the asymmetric return path is extra sensitive to the first-packet drop —
+  warm each host with a few retries. A fully external client is the smoothest.
+- **Reliable no-WG fallback:** open the scoreboard from a range host via the Proxmox
+  console — `CCDC2-desk01` (10.51.10.20) → Console → browse `http://10.51.50.10/`.
 
 ## Other CCDC2 URLs (all over the same tunnel)
 | Service | URL |

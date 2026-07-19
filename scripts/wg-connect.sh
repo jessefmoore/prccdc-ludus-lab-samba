@@ -33,6 +33,16 @@ sudo wg-quick down "$IFACE" 2>/dev/null || true
 sudo wg-quick up "$IFACE"
 sleep 2
 echo "== tunnel =="; sudo wg show "$IFACE" | grep -E 'handshake|transfer' || true
-echo "==> Opening the Quotient scoreboard (http://10.51.50.10/)"
+
+# This range's WG path drops the FIRST packet per host, so warm the scoreboard
+# (retry) until it answers before opening the browser.
+echo "==> Warming the scoreboard (http://10.51.50.10/) ..."
+for i in $(seq 1 15); do
+  code=$(curl -sL -o /dev/null -w '%{http_code}' --max-time 8 http://10.51.50.10/ 2>/dev/null)
+  [ "$code" = "200" ] && { echo "   up (HTTP 200)"; break; }
+  [ "$i" = 15 ] && echo "   still warming (HTTP $code) — the browser may need a refresh or two"
+  sleep 2
+done
+echo "==> Opening the Quotient scoreboard"
 xdg-open http://10.51.50.10/ 2>/dev/null || echo "   open http://10.51.50.10/ in your browser"
 echo "==> Down when done:  sudo wg-quick down $IFACE"
