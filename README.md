@@ -1,5 +1,14 @@
 # CCDC-RANGE-2 (Ludus)
 
+![Ludus](https://img.shields.io/badge/Ludus-range-1f6feb)
+![Ansible](https://img.shields.io/badge/Ansible-12%20custom%20roles-EE0000?logo=ansible&logoColor=white)
+![Samba AD](https://img.shields.io/badge/DC-Samba%20AD-751A57)
+![VMs](https://img.shields.io/badge/VMs-12-informational)
+![Authentik](https://img.shields.io/badge/SSO-Authentik-FD4B2D)
+![Elastic SIEM](https://img.shields.io/badge/SIEM-Elastic-005571?logo=elastic&logoColor=white)
+![Deploy](https://img.shields.io/badge/deploy-SUCCESS-2ea44f)
+![License](https://img.shields.io/badge/license-MIT-green)
+
 A second Collegiate Cyber Defense Competition range in [Ludus](https://ludus.cloud),
 built from the reusable `CCDC-RANGE-PROMPT-TEMPLATE.md` pattern and swapped to a new
 technology stack. Range ID **`CCDC2`** (rangeNumber 51 → `10.51.<vlan>.<octet>`),
