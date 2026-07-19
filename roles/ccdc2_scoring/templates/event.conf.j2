@@ -1,0 +1,226 @@
+# {{ ansible_managed }}
+# Quotient scoring config for the CCDC2 range. Single range (literal IPs, no "_"
+# team templating). Scores 18 services across HTTP/website-text, SSH, RDP, SMB,
+# LDAP, DNS, SQL, SMTP, IMAP and raw TCP.
+
+[RequiredSettings]
+  EventName = "{{ ccdc2_scoring_event_name }}"
+  EventType = "rvb"
+  DBConnectURL = "postgres://engineuser:{{ ccdc2_scoring_db_password }}@quotient_database:5432/engine"
+  BindAddress = "0.0.0.0"
+
+[MiscSettings]
+  EasyPCR = true
+  ShowDebugToBlueTeam = false
+  StartPaused = {{ ccdc2_scoring_start_paused | lower }}
+  Delay = {{ ccdc2_scoring_delay }}
+  Jitter = {{ ccdc2_scoring_jitter }}
+  Points = {{ ccdc2_scoring_points }}
+  Timeout = {{ ccdc2_scoring_timeout }}
+  SlaThreshold = {{ ccdc2_scoring_sla_threshold }}
+  SlaPenalty = {{ ccdc2_scoring_sla_penalty }}
+
+[CredlistSettings]
+  [[CredlistSettings.Credlist]]
+    CredlistName = "LinuxUsers"
+    CredlistPath = "linux.credlist"
+    CredlistExplainText = "username,password"
+  [[CredlistSettings.Credlist]]
+    CredlistName = "AuthentikUsers"
+    CredlistPath = "authentik.credlist"
+    CredlistExplainText = "username,password"
+  [[CredlistSettings.Credlist]]
+    CredlistName = "WindowsUsers"
+    CredlistPath = "windows.credlist"
+    CredlistExplainText = "username,password"
+  [[CredlistSettings.Credlist]]
+    CredlistName = "DBUsers"
+    CredlistPath = "db.credlist"
+    CredlistExplainText = "username,password"
+
+[[Admin]]
+  Name = "{{ ccdc2_scoring_admin_user }}"
+  Pw = "{{ ccdc2_scoring_admin_password }}"
+
+[[Team]]
+  Name = "{{ ccdc2_scoring_team_name }}"
+  Pw = "{{ ccdc2_scoring_team_password }}"
+
+# =============================================================================
+# BOXES / SERVICE CHECKS
+# =============================================================================
+
+# ---- Samba AD DC (DNS + LDAP) ----------------------------------------------
+[[Box]]
+  Name = "dc01"
+  IP = "{{ ccdc2_scoring_t_dc01 }}"
+  [[Box.Ping]]
+    Display = "ping"
+  [[Box.Dns]]
+    Display = "dns"
+    Port = 53
+    [[Box.Dns.Record]]
+      Kind = "A"
+      Domain = "{{ ccdc2_scoring_dc_fqdn }}"
+      Answer = ["{{ ccdc2_scoring_t_dc01 }}"]
+  [[Box.Ldap]]
+    Display = "ldap"
+    Port = 389
+    CredLists = ["WindowsUsers"]
+    Domain = "{{ ccdc2_scoring_domain }}"
+    Encrypted = false
+
+# ---- Linux Desktop (SSH) ----------------------------------------------------
+[[Box]]
+  Name = "desk01"
+  IP = "{{ ccdc2_scoring_t_desk01 }}"
+  [[Box.Ssh]]
+    Display = "ssh"
+    CredLists = ["LinuxUsers"]
+    [[Box.Ssh.Command]]
+      Command = "hostname"
+      Contains = true
+      Output = "desk01"
+
+# ---- Windows File Share (RDP + SMB) ----------------------------------------
+[[Box]]
+  Name = "fs01"
+  IP = "{{ ccdc2_scoring_t_fs01 }}"
+  [[Box.Rdp]]
+    Display = "rdp"
+    Port = 3389
+  [[Box.Smb]]
+    Display = "smb"
+    Port = 445
+    CredLists = ["WindowsUsers"]
+    Share = "Departments"
+    [[Box.Smb.File]]
+      Name = "HR/README-HR.txt"
+      Regex = "HR department"
+
+# ---- Mail (Roundcube web + SMTP + IMAP) ------------------------------------
+[[Box]]
+  Name = "mail01"
+  IP = "{{ ccdc2_scoring_t_mail01 }}"
+  [[Box.Web]]
+    Display = "roundcube"
+    Scheme = "http"
+    Port = 80
+    [[Box.Web.Url]]
+      Path = "/"
+      Status = 200
+      Regex = "(?i)roundcube"
+  [[Box.Smtp]]
+    Display = "smtp"
+    Port = 25
+    CredLists = ["LinuxUsers"]
+    Domain = "@{{ ccdc2_scoring_domain }}"
+    RequireAuth = true
+  [[Box.Imap]]
+    Display = "imap"
+    Port = 143
+    CredLists = ["LinuxUsers"]
+
+# ---- WordPress (HTTP + website text + SSH) ---------------------------------
+[[Box]]
+  Name = "web01"
+  IP = "{{ ccdc2_scoring_t_web01 }}"
+  [[Box.Web]]
+    Display = "wordpress"
+    Scheme = "http"
+    Port = 80
+    [[Box.Web.Url]]
+      Path = "/"
+      Status = 200
+      Regex = "wp-(content|includes)"
+  [[Box.Ssh]]
+    Display = "ssh"
+    CredLists = ["LinuxUsers"]
+    [[Box.Ssh.Command]]
+      Command = "hostname"
+      Contains = true
+      Output = "web01"
+
+# ---- Central Database (MySQL + TCP) ----------------------------------------
+[[Box]]
+  Name = "db01"
+  IP = "{{ ccdc2_scoring_t_db01 }}"
+  [[Box.Tcp]]
+    Display = "mysql-port"
+    Port = 3306
+  [[Box.Sql]]
+    Display = "mysql"
+    Port = 3306
+    Kind = "mysql"
+    CredLists = ["DBUsers"]
+    [[Box.Sql.Query]]
+      Database = "wordpress"
+      Command = "SELECT 1"
+      Output = "1"
+
+# ---- Authentik IdP (HTTP health) -------------------------------------------
+[[Box]]
+  Name = "auth01"
+  IP = "{{ ccdc2_scoring_t_auth01 }}"
+  [[Box.Web]]
+    Display = "authentik"
+    Scheme = "http"
+    Port = 9000
+    [[Box.Web.Url]]
+      Path = "/-/health/live/"
+      Status = 204
+  [[Box.Tcp]]
+    Display = "ldap-outpost"
+    Port = 389
+
+# ---- SnipeIT (HTTP + SSH via Authentik) ------------------------------------
+[[Box]]
+  Name = "snipe01"
+  IP = "{{ ccdc2_scoring_t_snipe01 }}"
+  [[Box.Web]]
+    Display = "snipeit"
+    Scheme = "http"
+    Port = 80
+    [[Box.Web.Url]]
+      Path = "/login"
+      Status = 200
+      Regex = "(?i)snipe-?it"
+  [[Box.Ssh]]
+    Display = "ssh-authentik"
+    CredLists = ["AuthentikUsers"]
+    [[Box.Ssh.Command]]
+      Command = "hostname"
+      Contains = true
+      Output = "snipe01"
+
+# ---- MantisBT ticketing (HTTP + website text) ------------------------------
+[[Box]]
+  Name = "tick01"
+  IP = "{{ ccdc2_scoring_t_tick01 }}"
+  [[Box.Web]]
+    Display = "mantis"
+    Scheme = "http"
+    Port = 80
+    [[Box.Web.Url]]
+      Path = "/mantis/login_page.php"
+      Status = 200
+      Regex = "(?i)mantis"
+
+# ---- Elastic SIEM (Kibana TCP) ---------------------------------------------
+[[Box]]
+  Name = "siem01"
+  IP = "{{ ccdc2_scoring_t_siem01 }}"
+  [[Box.Tcp]]
+    Display = "kibana"
+    Port = 5601
+
+# ---- Backup NAS (SMB + NFS TCP) --------------------------------------------
+[[Box]]
+  Name = "nas01"
+  IP = "{{ ccdc2_scoring_t_nas01 }}"
+  [[Box.Tcp]]
+    Display = "smb"
+    Port = 445
+  [[Box.Tcp]]
+    Display = "nfs"
+    Port = 2049

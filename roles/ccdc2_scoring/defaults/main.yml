@@ -1,0 +1,55 @@
+---
+# =============================================================================
+# ccdc2_scoring — Quotient scoring engine (github.com/dbaseqp/Quotient)
+# Deploys Quotient via docker compose and configures it to score the CCDC2
+# range services. All vars namespaced ccdc2_scoring_*.
+# =============================================================================
+
+ccdc2_scoring_repo: "https://github.com/dbaseqp/Quotient"
+ccdc2_scoring_dir: "/opt/ccdc2/quotient"
+
+# --- Web UI + engine settings ---
+ccdc2_scoring_event_name: "PRCCDC CCDC-RANGE-2"
+ccdc2_scoring_http_port: 80          # Quotient server (443 only if SSL configured)
+ccdc2_scoring_delay: 60              # seconds between scoring rounds
+ccdc2_scoring_jitter: 10
+ccdc2_scoring_points: 5              # points per successful service check
+ccdc2_scoring_timeout: 20
+ccdc2_scoring_sla_threshold: 5
+ccdc2_scoring_sla_penalty: 25
+ccdc2_scoring_start_paused: true     # start paused; unpause in the admin UI
+
+# --- Infra passwords (docker .env) ---
+ccdc2_scoring_db_password: "CCDC2-Score-DB-2026!"
+ccdc2_scoring_redis_password: "CCDC2-Score-Redis-2026!"
+
+# --- Scoreboard accounts ---
+ccdc2_scoring_admin_user: "admin"
+ccdc2_scoring_admin_password: "CCDC2-Score-Admin-2026!"
+ccdc2_scoring_team_name: "blue1"
+ccdc2_scoring_team_password: "CCDC2-Score-Blue1-2026!"
+
+# --- Credlists used by the checks (username,password) ---
+ccdc2_scoring_linux_user: "jsmith"                # AD user; SSH on domain-joined hosts + mail
+ccdc2_scoring_linux_password: "CCDC2-User-2026!"
+ccdc2_scoring_authentik_user: "akadmin"           # SSH to snipe01 via the Authentik LDAP outpost
+ccdc2_scoring_authentik_password: "CCDC2-Authentik-2026!"
+ccdc2_scoring_windows_user: "Administrator"       # LDAP to the DC, SMB to fs01
+ccdc2_scoring_windows_password: "CCDC2-Admin-2026!"
+ccdc2_scoring_db_user: "wp_user"                  # MySQL check
+ccdc2_scoring_db_check_password: "CCDC2-WP-2026!"
+
+# --- Range targets (match docs/VMS.md; override if the topology changes) ---
+ccdc2_scoring_domain: "ccdc.local"
+ccdc2_scoring_dc_fqdn: "ccdc2-dc01.ccdc.local"    # Samba DC self-registered A record
+ccdc2_scoring_t_dc01: "10.51.10.10"
+ccdc2_scoring_t_desk01: "10.51.10.20"
+ccdc2_scoring_t_fs01: "10.51.10.30"
+ccdc2_scoring_t_mail01: "10.51.10.40"
+ccdc2_scoring_t_web01: "10.51.20.10"
+ccdc2_scoring_t_db01: "10.51.30.10"
+ccdc2_scoring_t_auth01: "10.51.30.20"
+ccdc2_scoring_t_snipe01: "10.51.30.30"
+ccdc2_scoring_t_tick01: "10.51.30.40"
+ccdc2_scoring_t_siem01: "10.51.40.10"
+ccdc2_scoring_t_nas01: "10.51.40.20"

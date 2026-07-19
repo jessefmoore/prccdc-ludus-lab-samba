@@ -1,0 +1,26 @@
+---
+galaxy_info:
+  role_name: ccdc2_scoring
+  namespace: ccdc2
+  author: ccdc2
+  description: >-
+    Deploy the Quotient scoring engine (github.com/dbaseqp/Quotient) via docker
+    compose and configure it to score the CCDC2 range: 18 service checks across
+    HTTP/website-text, SSH, RDP, SMB, LDAP, DNS, SQL, SMTP, IMAP and TCP.
+    Idempotent.
+  license: MIT
+  min_ansible_version: "2.12"
+  platforms:
+    - name: Ubuntu
+      versions:
+        - all
+    - name: Debian
+      versions:
+        - all
+  galaxy_tags:
+    - scoring
+    - quotient
+    - ccdc
+    - competition
+    - ccdc2
+dependencies: []

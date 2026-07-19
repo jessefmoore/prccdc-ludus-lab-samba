@@ -216,6 +216,27 @@ ludus:
       - ccdc2_rustdesk
       - badsectorlabs.ludus_elastic_agent      # phase 2
 
+  # ===========================================================================
+  # VLAN 50 — SCORING
+  # ===========================================================================
+
+  # --- Quotient scoring engine (Ubuntu 24.04 + Docker) ----------------------
+  # Reaches every VLAN (inter_vlan ACCEPT) to score the range services.
+  - vm_name: "{{ range_id }}-score01"
+    hostname: "{{ range_id }}-score01"
+    template: ubuntu-24.04-x64-server-template
+    vlan: 50
+    ip_last_octet: 10
+    ram_gb: 8
+    ram_min_gb: 4
+    cpus: 4
+    linux: true
+    roles:
+      - geerlingguy.docker
+      - ccdc2_scoring
+      - ccdc2_rustdesk
+      - badsectorlabs.ludus_elastic_agent      # phase 2
+
 # =============================================================================
 # NETWORK — flat/ACCEPT during build so all service + AD dependencies resolve.
 # =============================================================================

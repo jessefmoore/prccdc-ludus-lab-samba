@@ -1,0 +1,92 @@
+---
+# =============================================================================
+# ccdc2_scoring — deploy the Quotient scoring engine + CCDC2 scoring config.
+# Docker + the compose plugin are already installed (geerlingguy.docker first).
+# =============================================================================
+
+- name: Raise vm.overcommit_memory for Redis (Quotient requirement)
+  ansible.posix.sysctl:
+    name: vm.overcommit_memory
+    value: "1"
+    state: present
+    reload: true
+
+- name: Install git
+  ansible.builtin.apt:
+    name: git
+    state: present
+    update_cache: true
+    cache_valid_time: 3600
+  environment:
+    DEBIAN_FRONTEND: noninteractive
+  register: ccdc2_score_apt
+  retries: 3
+  delay: 10
+  until: ccdc2_score_apt is succeeded
+
+- name: Clone the Quotient repository
+  ansible.builtin.git:
+    repo: "{{ ccdc2_scoring_repo }}"
+    dest: "{{ ccdc2_scoring_dir }}"
+    recursive: true
+    version: main
+    update: false
+  register: ccdc2_score_clone
+  retries: 3
+  delay: 10
+  until: ccdc2_score_clone is succeeded
+
+- name: Ensure the config + credlists directories exist
+  ansible.builtin.file:
+    path: "{{ ccdc2_scoring_dir }}/config/credlists"
+    state: directory
+    mode: "0755"
+
+- name: Template the docker .env
+  ansible.builtin.template:
+    src: env.j2
+    dest: "{{ ccdc2_scoring_dir }}/.env"
+    mode: "0600"
+  no_log: true
+
+- name: Template the Quotient event config
+  ansible.builtin.template:
+    src: event.conf.j2
+    dest: "{{ ccdc2_scoring_dir }}/config/event.conf"
+    mode: "0644"
+
+- name: Write the credlists used by the checks
+  ansible.builtin.copy:
+    dest: "{{ ccdc2_scoring_dir }}/config/credlists/{{ item.file }}"
+    content: "{{ item.user }},{{ item.password }}\n"
+    mode: "0640"
+  loop:
+    - { file: "linux.credlist", user: "{{ ccdc2_scoring_linux_user }}", password: "{{ ccdc2_scoring_linux_password }}" }
+    - { file: "authentik.credlist", user: "{{ ccdc2_scoring_authentik_user }}", password: "{{ ccdc2_scoring_authentik_password }}" }
+    - { file: "windows.credlist", user: "{{ ccdc2_scoring_windows_user }}", password: "{{ ccdc2_scoring_windows_password }}" }
+    - { file: "db.credlist", user: "{{ ccdc2_scoring_db_user }}", password: "{{ ccdc2_scoring_db_check_password }}" }
+  no_log: true
+
+- name: Build and start Quotient (db, redis, server, runners — divisor skipped)
+  ansible.builtin.command:
+    cmd: docker compose up --build -d db redis server runner
+    chdir: "{{ ccdc2_scoring_dir }}"
+  register: ccdc2_score_up
+  changed_when: >-
+    ('Built' in (ccdc2_score_up.stdout ~ ccdc2_score_up.stderr))
+    or ('Started' in (ccdc2_score_up.stdout ~ ccdc2_score_up.stderr))
+    or ('Created' in (ccdc2_score_up.stdout ~ ccdc2_score_up.stderr))
+    or ('Recreate' in (ccdc2_score_up.stdout ~ ccdc2_score_up.stderr))
+  retries: 2
+  delay: 15
+  until: ccdc2_score_up.rc == 0
+
+- name: Wait for the Quotient scoreboard to answer
+  ansible.builtin.uri:
+    url: "http://localhost:{{ ccdc2_scoring_http_port }}/"
+    status_code: [200, 302, 303, 401, 403]
+  register: ccdc2_score_web
+  retries: 20
+  delay: 10
+  until: ccdc2_score_web.status in [200, 302, 303, 401, 403]
+  failed_when: false
