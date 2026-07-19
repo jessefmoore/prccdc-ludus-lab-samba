@@ -25,18 +25,19 @@ role phase for hosts after it (cascade) — fix the role and redeploy the cut-of
 hosts with `limit`.
 
 ## Elastic SIEM — PHASE 2 (agent enrollment)
-The Elastic agent needs an enrollment token that only exists **after** the SIEM
-container is up, so agents are **commented out** in `ccdc2-range.yml` for phase 1.
-After the range reaches SUCCESS:
+`badsectorlabs.ludus_elastic_agent` **auto-discovers** the enrollment token *and*
+the Fleet server URL from what `ludus_elastic_container` saved on the Ludus host —
+so the agents need **no** `role_vars` (do NOT set the token/URL manually; a bad
+manual URL causes an `elastic-agent` "cannot contain colon" error). The agents are
+only commented out because siem01 (VLAN40) deploys **after** the agent hosts in IP
+order, so the token isn't saved yet on the first pass.
 
-1. Read the token from siem01: `/opt/elastic_container/enrollment_token.txt`
-   (SSH to 10.51.40.10, or `getLogs`). 
-2. Set it in `ccdc2-range.yml` → `global_role_vars.ludus_elastic_enrollment_token`.
-3. Uncomment every `# - badsectorlabs.ludus_elastic_agent   # phase 2` line
-   (desk01, mail01, web01, db01, auth01, snipe01, tick01, nas01).
-4. `putConfig` + `deployRange` again. Agents enroll to Fleet at `https://10.51.40.10:8220`.
+After the range reaches SUCCESS (container up + token saved):
+1. Uncomment every `# - badsectorlabs.ludus_elastic_agent` line
+   (dc01, desk01, mail01, web01, db01, auth01, snipe01, tick01, nas01).
+2. `putConfig` + `deployRange` again — the agents auto-enroll to Fleet.
 
-`scripts/enroll-elastic-agents.sh` documents the exact steps.
+That's it — no token to copy. `scripts/enroll-elastic-agents.sh` documents it.
 
 ## Authentik SSH — finalize (guided)
 Authentik deploys fully automatically; wiring its LDAP outpost for SSH-to-SnipeIT

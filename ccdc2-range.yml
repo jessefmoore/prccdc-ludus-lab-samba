@@ -239,10 +239,11 @@ global_role_vars:
   ccdc_sudo_group: "domain admins"
 
   # --- Elastic SIEM ---
-  # Fleet server = siem01. The enrollment token is filled in phase 2 after the
-  # container is up (see docs/DEPLOY.md); the agent role lines are commented
-  # until then so phase 1 can't fail on an empty token.
+  # ludus_elastic_agent AUTO-DISCOVERS the enrollment token AND the Fleet server
+  # URL from what ludus_elastic_container saved on the Ludus host — so the agents
+  # need no role_vars. (Only pin the versions for determinism.) The agent lines
+  # stay commented for phase 1 because siem01 (VLAN40) deploys AFTER the agent
+  # hosts in IP order, so the token isn't saved yet on the first pass; enable them
+  # once the container is up. See docs/DEPLOY.md.
   ludus_elastic_stack_version: "9.4.2"
   ludus_elastic_agent_version: "9.4.2"
-  ludus_elastic_fleet_server: "https://10.51.40.10:8220"
-  ludus_elastic_enrollment_token: "NzhiT2Q1OEJvUjVZcFkwQjVPYk06T0xvdkNDV183RDdnMGIxY3pFR2Zodw=="
