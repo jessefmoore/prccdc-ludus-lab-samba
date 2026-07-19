@@ -40,7 +40,8 @@ Agents enroll the desktop + Linux servers to the SIEM (phase 2 — see `docs/DEP
 ## Layout
 - `ccdc2-range.yml` — the Ludus range config (deployed).
 - `roles/` — 12 custom `ccdc2_*` roles (+ `ROLE_CONVENTIONS.md`).
-- `docs/` — VMs, network, access URLs, credentials, AD integration, deploy runbook.
+- `docs/` — VMs, network, access URLs, credentials, AD integration, deploy runbook,
+  validation, and creating a console-only team user (`docs/TEAM-USER.md`).
 - `scripts/` — role install, deploy, TrueNAS template build, elastic agent enrollment.
 - `CCDC-RANGE-2-PLAN.md` — the design/plan doc.
 
