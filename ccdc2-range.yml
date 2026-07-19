@@ -244,5 +244,5 @@ global_role_vars:
   # until then so phase 1 can't fail on an empty token.
   ludus_elastic_stack_version: "9.4.2"
   ludus_elastic_agent_version: "9.4.2"
-  ludus_elastic_fleet_server: "10.51.40.10:8220"
+  ludus_elastic_fleet_server: "https://10.51.40.10:8220"
   ludus_elastic_enrollment_token: "NzhiT2Q1OEJvUjVZcFkwQjVPYk06T0xvdkNDV183RDdnMGIxY3pFR2Zodw=="

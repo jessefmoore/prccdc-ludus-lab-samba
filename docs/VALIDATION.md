@@ -30,7 +30,7 @@ Each role runs its own on-target check; SUCCESS means they passed:
 
 ## Phase 2 — Elastic agents
 Agents enrolled on the 9 Linux hosts (desktop + servers; fs01/Windows and siem01
-itself excluded) to Fleet at `10.51.40.10:8220`. Confirm in Kibana → Fleet → Agents
+itself excluded) to Fleet at `https://10.51.40.10:8220`. Confirm in Kibana → Fleet → Agents
 (`https://10.51.40.10:5601`, `elastic`/`elasticpassword`).
 
 ## Live browsing note (WireGuard)

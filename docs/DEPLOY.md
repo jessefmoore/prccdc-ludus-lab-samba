@@ -34,7 +34,7 @@ After the range reaches SUCCESS:
 2. Set it in `ccdc2-range.yml` → `global_role_vars.ludus_elastic_enrollment_token`.
 3. Uncomment every `# - badsectorlabs.ludus_elastic_agent   # phase 2` line
    (desk01, mail01, web01, db01, auth01, snipe01, tick01, nas01).
-4. `putConfig` + `deployRange` again. Agents enroll to Fleet at `10.51.40.10:8220`.
+4. `putConfig` + `deployRange` again. Agents enroll to Fleet at `https://10.51.40.10:8220`.
 
 `scripts/enroll-elastic-agents.sh` documents the exact steps.
 
