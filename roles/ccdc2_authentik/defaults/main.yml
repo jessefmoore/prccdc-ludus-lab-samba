@@ -29,8 +29,12 @@ ccdc2_authentik_https_port: 9443
 ccdc2_authentik_ldap_port: 389
 ccdc2_authentik_ldaps_port: 636
 
-# The base DN the embedded LDAP outpost serves under (authentik default).
+# The base DN the LDAP outpost serves under (authentik default).
 ccdc2_authentik_ldap_base_dn: "dc=ldap,dc=goauthentik,dc=io"
+
+# This host's IP (auth01) where the authentik server publishes :9000 — the
+# dedicated LDAP outpost container connects back here.
+ccdc2_authentik_host_ip: "10.51.30.20"
 
 # Ship a starter blueprint that creates an LDAP provider + application (applied
 # best-effort by authentik on boot; see README for the finalize/verify steps).

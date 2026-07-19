@@ -1,0 +1,17 @@
+# {{ ansible_managed }}
+# Dedicated authentik LDAP outpost — serves LDAP (3389) / LDAPS (6636) for the
+# CCDC2 LDAP provider, published on this host's 389/636. Connects back to the
+# authentik server over the published API on {{ ccdc2_authentik_host_ip }}:9000.
+---
+services:
+  ldap:
+    image: {{ ccdc2_authentik_ldap_image }}
+    container_name: ccdc2_authentik_ldap
+    restart: unless-stopped
+    ports:
+      - "{{ ccdc2_authentik_ldap_port }}:3389"
+      - "{{ ccdc2_authentik_ldaps_port }}:6636"
+    environment:
+      AUTHENTIK_HOST: "http://{{ ccdc2_authentik_host_ip }}:{{ ccdc2_authentik_http_port }}"
+      AUTHENTIK_INSECURE: "true"
+      AUTHENTIK_TOKEN: "{{ ccdc2_ak_outpost_token }}"

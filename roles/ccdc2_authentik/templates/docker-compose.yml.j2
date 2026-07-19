@@ -54,9 +54,6 @@ services:
     ports:
       - "{{ ccdc2_authentik_http_port }}:9000"
       - "{{ ccdc2_authentik_https_port }}:9443"
-      # Embedded LDAP outpost (ldap 3389 / ldaps 6636 inside the container)
-      - "{{ ccdc2_authentik_ldap_port }}:3389"
-      - "{{ ccdc2_authentik_ldaps_port }}:6636"
     depends_on:
       postgresql:
         condition: service_healthy

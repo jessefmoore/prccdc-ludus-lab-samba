@@ -117,3 +117,12 @@
     msg: >-
       getent passwd akadmin -> {{ ccdc2_authssh_getent.stdout | default('(no result)') if ccdc2_authssh_getent.rc == 0 else '(not resolvable yet)' }}
 
+- name: (diagnostic) Fail conclusively if authentik SSH LDAP is not working
+  ansible.builtin.fail:
+    msg: >-
+      authentik SSH LDAP NOT working: bind_rc={{ ccdc2_authssh_bind.rc }}
+      (255=can't-contact/listener-down, 49=bad-creds);
+      getent_rc={{ ccdc2_authssh_getent.rc }};
+      getent_out={{ ccdc2_authssh_getent.stdout | default('') }}
+  when: ccdc2_authssh_bind.rc != 0 or ccdc2_authssh_getent.rc != 0
+

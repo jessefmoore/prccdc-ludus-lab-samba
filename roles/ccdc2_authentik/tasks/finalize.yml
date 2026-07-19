@@ -93,6 +93,16 @@
           | selectattr('name', 'equalto', 'CCDC2 LDAP Provider')
           | map(attribute='pk') | list | first) | default('') }}
 
+- name: (diagnostic) Surface the create response if no LDAP provider exists
+  ansible.builtin.fail:
+    msg: >-
+      LDAP provider NOT created.
+      create_status={{ ccdc2_ak_create.status | default('n/a') }}
+      body={{ ccdc2_ak_create.json | default(ccdc2_ak_create.content) | default('n/a') }}
+      authflow={{ ccdc2_ak_authflow_pk | default('n/a') }}
+      invflow={{ ccdc2_ak_invflow_pk | default('n/a') }}
+  when: ccdc2_ak_provider_pk | string | length == 0
+
 - name: Ensure an application points at the LDAP provider
   ansible.builtin.uri:
     url: "{{ ccdc2_ak_api }}/core/applications/"
@@ -107,55 +117,120 @@
   when: ccdc2_ak_provider_pk | string | length > 0
   failed_when: false
 
-- name: Get the embedded outpost
+# --- Dedicated LDAP outpost (the embedded outpost only serves proxy) ----------
+- name: Set the LDAP outpost image to match the authentik version
+  ansible.builtin.set_fact:
+    ccdc2_authentik_ldap_image: "ghcr.io/goauthentik/ldap:{{ ccdc2_ak_ver.json.version_current | default('2025.2.4') }}"
+
+- name: List existing outposts
   ansible.builtin.uri:
     url: "{{ ccdc2_ak_api }}/outposts/instances/?page_size=50"
     headers: "{{ ccdc2_ak_hdr }}"
   register: ccdc2_ak_outposts
   failed_when: false
 
-- name: Record the embedded outpost pk + current providers
+- name: Reuse the embedded outpost config as a base for the LDAP outpost
   ansible.builtin.set_fact:
-    ccdc2_ak_outpost_pk: >-
+    ccdc2_ak_base_config: >-
       {{ (ccdc2_ak_outposts.json.results
           | selectattr('name', 'search', 'Embedded')
-          | map(attribute='pk') | list | first) | default('') }}
-    ccdc2_ak_outpost_providers: >-
-      {{ (ccdc2_ak_outposts.json.results
-          | selectattr('name', 'search', 'Embedded')
-          | map(attribute='providers') | list | first) | default([]) }}
+          | map(attribute='config') | list | first) | default({}) }}
 
-- name: Assign the LDAP provider to the embedded outpost
+- name: Create the dedicated LDAP outpost (if missing)
   ansible.builtin.uri:
-    url: "{{ ccdc2_ak_api }}/outposts/instances/{{ ccdc2_ak_outpost_pk }}/"
+    url: "{{ ccdc2_ak_api }}/outposts/instances/"
+    method: POST
+    headers: "{{ ccdc2_ak_hdr }}"
+    body_format: json
+    body:
+      name: "CCDC2 LDAP Outpost"
+      type: ldap
+      providers: ["{{ ccdc2_ak_provider_pk | int }}"]
+      config: "{{ ccdc2_ak_base_config }}"
+    status_code: [201, 400]
+    return_content: true
+  register: ccdc2_ak_outpost_create
+  when: ccdc2_ak_outposts.json.results | selectattr('name', 'equalto', 'CCDC2 LDAP Outpost') | list | length == 0
+  failed_when: false
+
+- name: Show outpost create response
+  ansible.builtin.debug:
+    msg: >-
+      outpost create status={{ ccdc2_ak_outpost_create.status | default('skipped') }}
+      body={{ ccdc2_ak_outpost_create.json | default(ccdc2_ak_outpost_create.content) | default('') }}
+
+- name: Re-list outposts (resolve the LDAP outpost pk + token identifier)
+  ansible.builtin.uri:
+    url: "{{ ccdc2_ak_api }}/outposts/instances/?page_size=50"
+    headers: "{{ ccdc2_ak_hdr }}"
+  register: ccdc2_ak_outposts2
+  failed_when: false
+
+- name: Record the LDAP outpost pk + token identifier
+  ansible.builtin.set_fact:
+    ccdc2_ak_ldap_outpost_pk: >-
+      {{ (ccdc2_ak_outposts2.json.results
+          | selectattr('name', 'equalto', 'CCDC2 LDAP Outpost')
+          | map(attribute='pk') | list | first) | default('') }}
+    ccdc2_ak_ldap_token_id: >-
+      {{ (ccdc2_ak_outposts2.json.results
+          | selectattr('name', 'equalto', 'CCDC2 LDAP Outpost')
+          | map(attribute='token_identifier') | list | first) | default('') }}
+
+- name: Ensure the provider is assigned to the LDAP outpost
+  ansible.builtin.uri:
+    url: "{{ ccdc2_ak_api }}/outposts/instances/{{ ccdc2_ak_ldap_outpost_pk }}/"
     method: PATCH
     headers: "{{ ccdc2_ak_hdr }}"
     body_format: json
     body:
-      providers: "{{ (ccdc2_ak_outpost_providers + [ccdc2_ak_provider_pk | int]) | unique }}"
+      providers: ["{{ ccdc2_ak_provider_pk | int }}"]
     status_code: [200, 400]
-    return_content: true
-  when:
-    - ccdc2_ak_outpost_pk | string | length > 0
-    - ccdc2_ak_provider_pk | string | length > 0
-  register: ccdc2_ak_patch
+  when: ccdc2_ak_ldap_outpost_pk | string | length > 0
   failed_when: false
 
-- name: Confirm the embedded outpost provider assignment
-  ansible.builtin.uri:
-    url: "{{ ccdc2_ak_api }}/outposts/instances/{{ ccdc2_ak_outpost_pk }}/"
-    headers: "{{ ccdc2_ak_hdr }}"
-  register: ccdc2_ak_outpost_final
-  when: ccdc2_ak_outpost_pk | string | length > 0
-  failed_when: false
-
-- name: Show final outpost provider assignment
-  ansible.builtin.debug:
+- name: (diagnostic) Fail if the LDAP outpost or its token is missing
+  ansible.builtin.fail:
     msg: >-
-      provider pk={{ ccdc2_ak_provider_pk }};
-      embedded outpost providers={{ ccdc2_ak_outpost_final.json.providers | default('n/a') }}
+      LDAP outpost not ready: pk='{{ ccdc2_ak_ldap_outpost_pk }}'
+      token_id='{{ ccdc2_ak_ldap_token_id }}'
+      create_status={{ ccdc2_ak_outpost_create.status | default('skip') }}
+      body={{ ccdc2_ak_outpost_create.json | default(ccdc2_ak_outpost_create.content) | default('') }}
+  when: ccdc2_ak_ldap_outpost_pk | string | length == 0 or ccdc2_ak_ldap_token_id | string | length == 0
 
-- name: Wait for the embedded outpost LDAP listener to come up on this host
+- name: Fetch the LDAP outpost token key
+  ansible.builtin.uri:
+    url: "{{ ccdc2_ak_api }}/core/tokens/{{ ccdc2_ak_ldap_token_id }}/view_key/"
+    headers: "{{ ccdc2_ak_hdr }}"
+  register: ccdc2_ak_token_view
+  failed_when: false
+  no_log: true
+
+- name: Record the outpost token
+  ansible.builtin.set_fact:
+    ccdc2_ak_outpost_token: "{{ ccdc2_ak_token_view.json.key | default('') }}"
+  no_log: true
+
+- name: (diagnostic) Fail if the outpost token could not be read
+  ansible.builtin.fail:
+    msg: "could not read LDAP outpost token: status={{ ccdc2_ak_token_view.status | default('n/a') }}"
+  when: ccdc2_ak_outpost_token | string | length == 0
+
+- name: Template the dedicated LDAP outpost compose
+  ansible.builtin.template:
+    src: docker-compose.ldap.yml.j2
+    dest: "{{ ccdc2_authentik_stack_dir }}/docker-compose.ldap.yml"
+    mode: "0600"
+  no_log: true
+
+- name: Start the LDAP outpost container
+  ansible.builtin.command:
+    cmd: docker compose -f docker-compose.ldap.yml up -d
+    chdir: "{{ ccdc2_authentik_stack_dir }}"
+  register: ccdc2_ak_ldap_up
+  changed_when: "'Started' in ccdc2_ak_ldap_up.stderr or 'Created' in ccdc2_ak_ldap_up.stderr or 'Recreate' in ccdc2_ak_ldap_up.stderr"
+
+- name: Wait for the LDAP outpost listener on :{{ ccdc2_authentik_ldap_port }}
   ansible.builtin.wait_for:
     host: "127.0.0.1"
     port: "{{ ccdc2_authentik_ldap_port }}"
@@ -163,8 +238,9 @@
   register: ccdc2_ak_ldap_listen
   failed_when: false
 
-- name: Show LDAP listener status
+- name: Show LDAP outpost status
   ansible.builtin.debug:
     msg: >-
-      authentik LDAP outpost listener on :{{ ccdc2_authentik_ldap_port }}
-      {{ 'UP' if (ccdc2_ak_ldap_listen.elapsed is defined and 'Timeout' not in (ccdc2_ak_ldap_listen.msg | default(''))) else 'NOT up (' ~ (ccdc2_ak_ldap_listen.msg | default('')) ~ ')' }}
+      LDAP outpost pk={{ ccdc2_ak_ldap_outpost_pk }};
+      listener :{{ ccdc2_authentik_ldap_port }}
+      {{ 'UP' if 'Timeout' not in (ccdc2_ak_ldap_listen.msg | default('')) else 'DOWN (' ~ (ccdc2_ak_ldap_listen.msg | default('')) ~ ')' }}
