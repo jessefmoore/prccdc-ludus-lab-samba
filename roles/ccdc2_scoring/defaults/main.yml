@@ -17,7 +17,7 @@ ccdc2_scoring_points: 5              # points per successful service check
 ccdc2_scoring_timeout: 20
 ccdc2_scoring_sla_threshold: 5
 ccdc2_scoring_sla_penalty: 25
-ccdc2_scoring_start_paused: true     # start paused; unpause in the admin UI
+ccdc2_scoring_start_paused: false    # false = auto-run scoring (set true for a real competition)
 
 # --- Infra passwords (docker .env) ---
 ccdc2_scoring_db_password: "CCDC2-Score-DB-2026!"

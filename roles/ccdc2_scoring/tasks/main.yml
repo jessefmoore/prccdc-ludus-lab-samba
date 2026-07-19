@@ -54,18 +54,31 @@
     src: event.conf.j2
     dest: "{{ ccdc2_scoring_dir }}/config/event.conf"
     mode: "0644"
+  register: ccdc2_score_conf
 
 - name: Write the credlists used by the checks
   ansible.builtin.copy:
     dest: "{{ ccdc2_scoring_dir }}/config/credlists/{{ item.file }}"
     content: "{{ item.user }},{{ item.password }}\n"
     mode: "0640"
+  register: ccdc2_score_creds
   loop:
     - { file: "linux.credlist", user: "{{ ccdc2_scoring_linux_user }}", password: "{{ ccdc2_scoring_linux_password }}" }
     - { file: "authentik.credlist", user: "{{ ccdc2_scoring_authentik_user }}", password: "{{ ccdc2_scoring_authentik_password }}" }
     - { file: "windows.credlist", user: "{{ ccdc2_scoring_windows_user }}", password: "{{ ccdc2_scoring_windows_password }}" }
     - { file: "db.credlist", user: "{{ ccdc2_scoring_db_user }}", password: "{{ ccdc2_scoring_db_check_password }}" }
   no_log: true
+
+# Quotient parses config/event.conf into its PostgreSQL DB on first init only, so
+# when the scoring config OR credlists change, wipe the DB volume to force a fresh
+# re-parse of the corrected checks. (No-op on a first deploy; only fires on change.)
+- name: Wipe the Quotient DB when the scoring config changed (force config re-parse)
+  ansible.builtin.command:
+    cmd: docker compose down -v
+    chdir: "{{ ccdc2_scoring_dir }}"
+  when: ccdc2_score_conf is changed or ccdc2_score_creds is changed
+  changed_when: true
+  failed_when: false
 
 - name: Build and start Quotient (db, redis, server, runners — divisor skipped)
   ansible.builtin.command:
