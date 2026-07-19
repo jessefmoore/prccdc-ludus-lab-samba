@@ -32,7 +32,7 @@ ludus:
     linux: true
     roles:
       - ccdc2_samba_dc
-      - badsectorlabs.ludus_elastic_agent      # phase 2
+      # - badsectorlabs.ludus_elastic_agent      # phase 2
     role_vars:
       ccdc2_samba_dc_ip: "10.51.10.10"
 
@@ -50,7 +50,7 @@ ludus:
     roles:
       - ccdc2_linux_domain_join
       - ccdc2_rustdesk
-      - badsectorlabs.ludus_elastic_agent      # phase 2
+      # - badsectorlabs.ludus_elastic_agent      # phase 2
 
   # --- Windows central file share (Server 2022), joins Samba AD -------------
   - vm_name: "{{ range_id }}-fs01"
@@ -82,7 +82,7 @@ ludus:
       - geerlingguy.docker
       - ccdc2_mail
       - ccdc2_rustdesk
-      - badsectorlabs.ludus_elastic_agent      # phase 2
+      # - badsectorlabs.ludus_elastic_agent      # phase 2
 
   # ===========================================================================
   # VLAN 20 — DMZ
@@ -104,7 +104,7 @@ ludus:
       - geerlingguy.docker
       - ccdc2_wordpress
       - ccdc2_rustdesk
-      - badsectorlabs.ludus_elastic_agent      # phase 2
+      # - badsectorlabs.ludus_elastic_agent      # phase 2
 
   # ===========================================================================
   # VLAN 30 — INTERNAL SERVICES
@@ -125,7 +125,7 @@ ludus:
       - ccdc2_linux_domain_join
       - ccdc2_centraldb
       - ccdc2_rustdesk
-      - badsectorlabs.ludus_elastic_agent      # phase 2
+      # - badsectorlabs.ludus_elastic_agent      # phase 2
 
   # --- Authentik IdP (Ubuntu 24.04 + Docker) --------------------------------
   - vm_name: "{{ range_id }}-auth01"
@@ -143,7 +143,7 @@ ludus:
       - geerlingguy.docker
       - ccdc2_authentik
       - ccdc2_rustdesk
-      - badsectorlabs.ludus_elastic_agent      # phase 2
+      # - badsectorlabs.ludus_elastic_agent      # phase 2
 
   # --- SnipeIT (Ubuntu 24.04 + Docker) -> central DB; SSH via Authentik -----
   - vm_name: "{{ range_id }}-snipe01"
@@ -161,7 +161,7 @@ ludus:
       - ccdc2_snipeit
       - ccdc2_authentik_ssh
       - ccdc2_rustdesk
-      - badsectorlabs.ludus_elastic_agent      # phase 2
+      # - badsectorlabs.ludus_elastic_agent      # phase 2
 
   # --- MantisBT ticketing (Debian 12, native Apache/PHP) -> central DB ------
   - vm_name: "{{ range_id }}-tick01"
@@ -178,7 +178,7 @@ ludus:
       - ccdc2_linux_domain_join
       - ccdc2_mantis
       - ccdc2_rustdesk
-      - badsectorlabs.ludus_elastic_agent      # phase 2
+      # - badsectorlabs.ludus_elastic_agent      # phase 2
 
   # ===========================================================================
   # VLAN 40 — SECURITY / BACKUP
@@ -214,7 +214,7 @@ ludus:
     roles:
       - ccdc2_truenas_backup
       - ccdc2_rustdesk
-      - badsectorlabs.ludus_elastic_agent      # phase 2
+      # - badsectorlabs.ludus_elastic_agent      # phase 2
 
   # ===========================================================================
   # VLAN 50 — SCORING
@@ -235,7 +235,7 @@ ludus:
       - geerlingguy.docker
       - ccdc2_scoring
       - ccdc2_rustdesk
-      - badsectorlabs.ludus_elastic_agent      # phase 2
+      # - badsectorlabs.ludus_elastic_agent      # phase 2
 
 # =============================================================================
 # NETWORK — flat/ACCEPT during build so all service + AD dependencies resolve.
