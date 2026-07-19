@@ -122,6 +122,18 @@
     state: present
   notify: Restart samba-ad-dc
 
+# Allow plaintext LDAP simple binds (lab). Samba AD defaults to requiring
+# transport encryption for simple binds, which breaks apps that bind over
+# ldap:// (docker-mailserver, scoring LDAP checks, etc.).
+- name: Allow plaintext LDAP simple binds (lab)
+  ansible.builtin.lineinfile:
+    path: /etc/samba/smb.conf
+    insertafter: '^\[global\]'
+    regexp: '^\s*ldap server require strong auth\s*='
+    line: "\tldap server require strong auth = no"
+    state: present
+  notify: Restart samba-ad-dc
+
 # --- Point the DC's own resolver at itself (Samba internal DNS) --------------
 # systemd-resolved's stub listener conflicts with Samba on :53, so disable it
 # and use a static resolv.conf pointing at 127.0.0.1.

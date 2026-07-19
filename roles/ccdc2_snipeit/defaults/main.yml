@@ -25,7 +25,7 @@ ccdc2_snipeit_app_url: "http://10.51.30.30"
 # as-is for the lab; regenerate your own with:
 #   docker run --rm snipe/snipe-it php artisan key:generate --show
 # and override via role_vars if you want a unique key per deployment.
-ccdc2_snipeit_app_key: "base64:2hg8p8V2VqO6oQ0m6E6Yl0m2rD3hQ2yZ8kNfV1cJ4A="
+ccdc2_snipeit_app_key: "base64:aAn/6bGkJ73rJNxyr9C2qlQUC/lanVr4pI8DDmyrATA="
 
 # Timezone used by the Snipe-IT application container.
 ccdc2_snipeit_timezone: "America/Los_Angeles"

@@ -168,7 +168,7 @@
     Port = 9000
     [[Box.Web.Url]]
       Path = "/-/health/live/"
-      Status = 204
+      Status = 200
   [[Box.Tcp]]
     Display = "ldap-outpost"
     Port = 389
@@ -182,9 +182,9 @@
     Scheme = "http"
     Port = 80
     [[Box.Web.Url]]
-      Path = "/login"
+      Path = "/setup"
       Status = 200
-      Regex = "(?i)snipe-?it"
+      Regex = "(?i)snipe"
   [[Box.Ssh]]
     Display = "ssh-authentik"
     CredLists = ["AuthentikUsers"]
