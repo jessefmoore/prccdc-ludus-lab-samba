@@ -1,3 +1,6 @@
 *.tar.gz
 scratch/
 *.retry
+# WireGuard client configs contain a private key — never commit
+ludus-wg.conf
+*-wg.conf
