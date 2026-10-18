@@ -57,6 +57,40 @@ Authentik SSH finalize step. `docs/DEPLOY.md` has the full runbook (including th
 Ludus MCP equivalents and rebuild-from-scratch steps) if you need more detail than
 this quick start.
 
+## Alternative: deploy via the Ludus MCP server + Claude Code
+
+Prefer to deploy by chatting with an agent instead of running CLI commands by
+hand? Ludus ships an official MCP server
+([docs](https://docs.ludus.cloud/docs/using-ludus/mcp)) that exposes the same
+range/role operations as tools an LLM can call. Requires **Ludus v2** (v1 is not
+supported) and Node.js 20+.
+
+1. **Get an API key** from your Ludus server:
+   ```bash
+   ludus apikey
+   ```
+2. **Register the MCP server with Claude Code**:
+   ```bash
+   claude mcp add ludus -- npx -y @badsectorlabs/ludus-mcp \
+     --url https://<LUDUS_HOST>:8080 --api-key <YOUR_API_KEY>
+   ```
+   (`LUDUS_URL` / `LUDUS_API_KEY` env vars work too, instead of the flags.)
+3. **Open Claude Code in this repo** and ask it to deploy the range in plain
+   English, e.g.:
+   > Install the community and `ccdc2_*` roles from `roles/`, create range
+   > `CCDC2` with rangeNumber 51, push `ccdc2-range.yml` as its config, then
+   > deploy it and monitor until `rangeState` is `SUCCESS`.
+
+   Claude will drive the MCP tools (`InstallRole`/`InstallRoleTar`, `createRange`,
+   `putConfig`, `deployRange`, `listRange`, `getLogs`, ...) itself. The exact call
+   sequence, phase-2 Elastic agent enrollment, and rebuild-from-scratch steps are
+   all documented in `docs/DEPLOY.md` if you want to review or steer what it's
+   doing.
+
+> **Security note:** the MCP server can run destructive operations (delete/
+> redeploy ranges) and its config stores your API key in plaintext — treat the
+> Claude Code MCP config file the same as any other credential.
+
 ## Services
 
 | VM | IP | OS | Service | Delivery |
