@@ -1,4 +1,4 @@
-# CCDC-RANGE-2 (Ludus)
+# CCDC-RANGE-2 (Ludus v2)
 
 ![Ludus](https://img.shields.io/badge/Ludus-range-1f6feb)
 ![Ansible](https://img.shields.io/badge/Ansible-12%20custom%20roles-EE0000?logo=ansible&logoColor=white)
