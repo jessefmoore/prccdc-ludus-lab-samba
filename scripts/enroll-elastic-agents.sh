@@ -19,8 +19,8 @@ echo "      sed -i 's/# - badsectorlabs.ludus_elastic_agent/- badsectorlabs.ludu
 echo "    (dc01, desk01, mail01, web01, db01, auth01, snipe01, tick01, nas01)"
 echo
 echo "==> 2. Re-push + redeploy (the agents auto-discover token + Fleet URL):"
-echo "      ludus range config set -f ccdc2-range.yml"
-echo "      ludus range deploy"
+echo "      ludus range config set -f ccdc2-range.yml --range $RANGEID"
+echo "      ludus range deploy --range $RANGEID"
 echo
 echo "View agents in Kibana -> Fleet -> Agents (https://10.51.40.10:5601,"
 echo "elastic / <ludus_elastic_password>, default 'elasticpassword')."
