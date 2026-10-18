@@ -18,6 +18,45 @@ AD domain **`ccdc.local`** served by a **Samba** Domain Controller (Linux).
 > built-in Windows `domain:` block is **not** used — every host's domain
 > provisioning, DNS, and join is handled by the custom `ccdc2_*` roles.
 
+## Quick start (deploy this range)
+
+Assumes you already have access to a Ludus server and the [`ludus` CLI](https://docs.ludus.cloud/docs/using-ludus/cli)
+installed and configured (`ludus --url https://<server>:8080 --apikey <key>`, or
+set it once via `ludus --config`). Run everything below from the root of this repo.
+
+1. **Install the roles** (community + the 12 custom `ccdc2_*` roles):
+   ```bash
+   ./scripts/install-roles.sh
+   ```
+2. **Create the range** — pinned to rangeNumber 51 so IPs come up as `10.51.<vlan>.<octet>`
+   (the config in `ccdc2-range.yml` hardcodes that addressing):
+   ```bash
+   ludus range create -n CCDC2 -r CCDC2 --range-number 51
+   ```
+3. **Push the config and deploy** (brings up all 12 VMs; takes ~1-3 hours):
+   ```bash
+   ./scripts/deploy.sh
+   ```
+   Watch progress with `ludus range logs -f --range CCDC2` (or check
+   `ludus range list --range CCDC2` for `rangeState: SUCCESS`).
+4. **Enroll the Elastic SIEM agents** — this is phase 2, run only after step 3
+   reaches `SUCCESS` (siem01 has to exist first to issue the Fleet token):
+   ```bash
+   ./scripts/enroll-elastic-agents.sh
+   ```
+5. **Connect over WireGuard** and open the scoreboard — see `docs/WIREGUARD-ACCESS.md`
+   for one-time setup, then:
+   ```bash
+   ./scripts/wg-connect.sh
+   ```
+
+Once up, see `docs/ACCESS-URLS.md` + `docs/CREDENTIALS.md` for every service URL and
+login, `docs/VALIDATION.md` for what "deployed correctly" looks like, and
+`docs/AD-INTEGRATION.md` / `roles/ccdc2_authentik/README.md` for the one guided
+Authentik SSH finalize step. `docs/DEPLOY.md` has the full runbook (including the
+Ludus MCP equivalents and rebuild-from-scratch steps) if you need more detail than
+this quick start.
+
 ## Services
 
 | VM | IP | OS | Service | Delivery |
@@ -46,6 +85,6 @@ Agents enroll the desktop + Linux servers to the SIEM (phase 2 — see `docs/DEP
 - `scripts/` — role install, deploy, TrueNAS template build, elastic agent enrollment.
 - `CCDC-RANGE-2-PLAN.md` — the design/plan doc.
 
-Deploy is orchestrated via the **Ludus MCP** (no local `ludus` CLI). See
-`docs/DEPLOY.md`. Credentials are committed as role defaults **by design** — keep
-this repo private.
+Deploy via the local `ludus` CLI (see **Quick start** above) or the Ludus MCP —
+`docs/DEPLOY.md` covers both. Credentials are committed as role defaults **by
+design** — keep this repo private.
