@@ -1,7 +1,14 @@
 # CCDC-RANGE-2 — Deploy Runbook
 
-Deployed via the **Ludus MCP** as admin `JM` (no local `ludus` CLI). Range `CCDC2`,
-rangeNumber 51.
+Originally built via raw Ludus MCP tool calls as admin `JM`. Range `CCDC2`,
+rangeNumber 51. This doc is the detailed reference for that call sequence — for a
+guided path, see the README's two quick starts instead:
+- **[Quick start](../README.md#quick-start-deploy-this-range)** — the local
+  `ludus` v2 CLI + this repo's `scripts/*.sh`.
+- **[Quick start via Claude Code](../README.md#alternative-deploy-via-the-ludus-mcp-server--claude-code)**
+  — the same steps below, but driven conversationally through the official
+  [Ludus MCP server](https://docs.ludus.cloud/docs/using-ludus/mcp)
+  (`@badsectorlabs/ludus-mcp`) instead of calling the tools by hand.
 
 ## Order of operations (already done for the initial build)
 1. Install community roles — `geerlingguy.docker`, `badsectorlabs.ludus_elastic_container`,
